@@ -3,12 +3,14 @@ package ecommerce.user_service.service;
 import ecommerce.user_service.dto.UserRequest;
 import ecommerce.user_service.dto.UserResponse;
 import ecommerce.user_service.entity.User;
+import ecommerce.user_service.entity.UserStatus;
 import ecommerce.user_service.mapper.UserMapper;
 import ecommerce.user_service.repo.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -107,5 +109,16 @@ public class UserService {
                 .toList();
         log.info("Saved users : {}", userResponseList);
         return userResponseList;
+    }
+
+    public UserResponse updateUserStatus(Long id, UserStatus status) {
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("id not found"));
+        user.setStatus(status);
+        user.setUpdatedAt(LocalDateTime.now());
+        User savedUser = userRepository.save(user);
+        log.info("User status updated. userId={}, status={}", savedUser.getId(), savedUser.getStatus());
+        return userMapper.toResponse(savedUser);
     }
 }

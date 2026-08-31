@@ -2,6 +2,7 @@ package ecommerce.user_service.controller;
 
 import ecommerce.user_service.dto.UserRequest;
 import ecommerce.user_service.dto.UserResponse;
+import ecommerce.user_service.dto.UserStatusRequest;
 import ecommerce.user_service.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +48,12 @@ public class UserController {
     public ResponseEntity<List<UserResponse>> fetchAllUsers() {
         log.info("====Fetching all users====");
         return ResponseEntity.ok(userService.fetchAllUsers());
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<UserResponse> updateUserStatus(@PathVariable Long id, @RequestBody UserStatusRequest request) {
+        log.info("====updateUserStatus====");
+        return ResponseEntity.ok(userService.updateUserStatus(id, request.status()));
     }
 
 
