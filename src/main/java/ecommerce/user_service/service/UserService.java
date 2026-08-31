@@ -49,20 +49,11 @@ public class UserService {
 
     public List<UserResponse> fetchAllUsers() {
 
-        List<User> users = userRepository.findAll();
-        List<UserResponse> userResponseList = new ArrayList<>();
-        //streams way
-//        users.stream()
-//                //.map(u -> toResponse(u))
-//                .map(this::toResponse)
-//                .map(userResponseList::add)
-
-
-
-        for (User user : users) {
-            userResponseList.add(toResponse(user));
-        }
-        log.info("Fetched all users : {}", users);
+        List<UserResponse> userResponseList = userRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+        log.info("Fetched all users : {}", userResponseList);
         return userResponseList;
     }
 
@@ -80,25 +71,6 @@ public class UserService {
         );
     }
 
-//    private List<UserResponse> toResponseList(List<User> users) {
-//
-//        List<UserResponse> userResponseList = new ArrayList<>();
-//        for (User user : users) {
-//            UserResponse userResponse = new UserResponse(
-//                    user.getId(),
-//                    user.getFirstName(),
-//                    user.getLastName(),
-//                    user.getEmail(),
-//                    user.getPhone(),
-//                    user.getStatus(),
-//                    user.getRole(),
-//                    user.getCreatedAt(),
-//                    user.getUpdatedAt());
-//            userResponseList.add(userResponse);
-//        }
-//        return userResponseList;
-//    }
-
     public List<UserResponse> createMultipleUsers(List<UserRequest> userRequestList) {
 
         List<User> userList = new ArrayList<>();
@@ -115,14 +87,11 @@ public class UserService {
             user.setUpdatedAt(LocalDateTime.now());
             userList.add(user);
         }
-        List<User> savedUsers = userRepository.saveAll(userList);
-
-        List<UserResponse> userResponseList = new ArrayList<>();
-        for (User user : userList) {
-            userResponseList.add(toResponse(user));
-        }
-
-        log.info("Saved users : {}", savedUsers);
+        List<UserResponse> userResponseList = userRepository.saveAll(userList)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+        log.info("Saved users : {}", userResponseList);
         return userResponseList;
     }
 }
