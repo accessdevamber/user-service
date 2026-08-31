@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -37,14 +39,31 @@ public class UserService {
         return toResponse(savedUser);
     }
 
-    public UserResponse getUserById(Long id) {
+    public UserResponse fetchUserById(Long id) {
 
         User user = userRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("User not found with id: " + id));
-
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         log.info("Fetched user : {}", user);
         return toResponse(user);
+    }
+
+    public List<UserResponse> fetchAllUsers() {
+
+        List<User> users = userRepository.findAll();
+        List<UserResponse> userResponseList = new ArrayList<>();
+        //streams way
+//        users.stream()
+//                //.map(u -> toResponse(u))
+//                .map(this::toResponse)
+//                .map(userResponseList::add)
+
+
+
+        for (User user : users) {
+            userResponseList.add(toResponse(user));
+        }
+        log.info("Fetched all users : {}", users);
+        return userResponseList;
     }
 
     private UserResponse toResponse(User user) {
@@ -59,5 +78,51 @@ public class UserService {
                 user.getCreatedAt(),
                 user.getUpdatedAt()
         );
+    }
+
+//    private List<UserResponse> toResponseList(List<User> users) {
+//
+//        List<UserResponse> userResponseList = new ArrayList<>();
+//        for (User user : users) {
+//            UserResponse userResponse = new UserResponse(
+//                    user.getId(),
+//                    user.getFirstName(),
+//                    user.getLastName(),
+//                    user.getEmail(),
+//                    user.getPhone(),
+//                    user.getStatus(),
+//                    user.getRole(),
+//                    user.getCreatedAt(),
+//                    user.getUpdatedAt());
+//            userResponseList.add(userResponse);
+//        }
+//        return userResponseList;
+//    }
+
+    public List<UserResponse> createMultipleUsers(List<UserRequest> userRequestList) {
+
+        List<User> userList = new ArrayList<>();
+        for (UserRequest userRequest : userRequestList) {
+            User user = new User();
+            user.setFirstName(userRequest.firstName());
+            user.setLastName(userRequest.lastName());
+            user.setEmail(userRequest.email());
+            user.setPasswordHash(userRequest.password());
+            user.setPhone(userRequest.phone());
+            user.setStatus(UserStatus.ACTIVE);
+            user.setRole(UserRole.CUSTOMER);
+            user.setCreatedAt(LocalDateTime.now());
+            user.setUpdatedAt(LocalDateTime.now());
+            userList.add(user);
+        }
+        List<User> savedUsers = userRepository.saveAll(userList);
+
+        List<UserResponse> userResponseList = new ArrayList<>();
+        for (User user : userList) {
+            userResponseList.add(toResponse(user));
+        }
+
+        log.info("Saved users : {}", savedUsers);
+        return userResponseList;
     }
 }
