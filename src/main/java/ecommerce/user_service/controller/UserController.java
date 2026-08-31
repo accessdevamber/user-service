@@ -3,6 +3,7 @@ package ecommerce.user_service.controller;
 import ecommerce.user_service.dto.UserRequest;
 import ecommerce.user_service.dto.UserResponse;
 import ecommerce.user_service.dto.UserStatusRequest;
+import ecommerce.user_service.entity.UserStatus;
 import ecommerce.user_service.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/users")
@@ -50,11 +52,18 @@ public class UserController {
         return ResponseEntity.ok(userService.fetchAllUsers());
     }
 
+    @GetMapping("/filterByUserStatus")
+    public ResponseEntity<List<UserResponse>> filterByStatus(@RequestParam(defaultValue = "ACTIVE") String userStatus) {
+        log.info("====Filtering by user status====");
+        return ResponseEntity.ok(userService.filterByUserStatus(userStatus.toUpperCase(Locale.ROOT)));
+    }
+
     @PatchMapping("/{id}/status")
     public ResponseEntity<UserResponse> updateUserStatus(@PathVariable Long id, @RequestBody UserStatusRequest request) {
         log.info("====updateUserStatus====");
         return ResponseEntity.ok(userService.updateUserStatus(id, request.status()));
     }
+
 
 
 }

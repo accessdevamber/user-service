@@ -121,4 +121,15 @@ public class UserService {
         log.info("User status updated. userId={}, status={}", savedUser.getId(), savedUser.getStatus());
         return userMapper.toResponse(savedUser);
     }
+
+    public List<UserResponse> filterByUserStatus(String userStatus) {
+        log.info("service.......");
+        List<UserResponse> usersByStatus = userRepository.findByStatus(UserStatus.from(userStatus))
+                .stream()
+                .map(userMapper::toResponse)
+                .toList();
+        //log.info("usersByStatus " + usersByStatus + "{}", usersByStatus);
+        log.info("usersByStatus {} {}", usersByStatus, usersByStatus);
+        return usersByStatus;
+    }
 }
