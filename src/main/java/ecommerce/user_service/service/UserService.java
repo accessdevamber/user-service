@@ -135,7 +135,7 @@ public class UserService {
                 .map(userMapper::toResponse)
                 .toList();
         //log.info("usersByStatus " + usersByStatus + "{}", usersByStatus);
-        log.info("usersByStatus {} -> {}", userStatus, objectMapper.writeValueAsString(usersByStatus));
+        log.info("Users filtered by status. status={}, users={}", userStatus, objectMapper.writeValueAsString(usersByStatus));
         return usersByStatus;
     }
 }
