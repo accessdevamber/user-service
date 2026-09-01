@@ -25,7 +25,7 @@ public class UserService {
 
     public UserResponse createUser(UserRequest request) {
 
-        User user = userMapper.toEntity(request);
+//        User user = userMapper.toEntity(request);
 //        User user = User.builder()
 //                .firstName(request.firstName())
 //                .lastName(request.lastName())
@@ -37,10 +37,11 @@ public class UserService {
 //                .createdAt(LocalDateTime.now())
 //                .updatedAt(LocalDateTime.now())
 //                .build();
-        User savedUser = userRepository.save(user);
+        //User savedUser = userRepository.save(user);
+        User savedUser = userRepository.save(userMapper.toEntity(request));
         //return toResponse(savedUser);
-        UserResponse response = userMapper.toResponse(user);
-        log.info("Saved user : {}", response);
+        UserResponse response = userMapper.toResponse(savedUser);
+        log.info("Saved user : {}", objectMapper.writeValueAsString(response));
         return response;
     }
 
@@ -48,9 +49,10 @@ public class UserService {
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-        log.info("Fetched user : {}", user);
-        //return toResponse(user);
-        return userMapper.toResponse(user);
+        //log.info("Fetched user : {}", user);
+        UserResponse response = userMapper.toResponse(user);
+        log.info("Fetched user : {}", objectMapper.writeValueAsString(response));
+        return response;
     }
 
     public List<UserResponse> fetchAllUsers() {
@@ -61,7 +63,7 @@ public class UserService {
                 .map(userMapper::toResponse)
                 .toList();
         log.info("Fetched users count = {}", userResponseList.size());
-        log.info("Fetched all users normal list logging : {}", userResponseList);
+        //log.info("Fetched all users normal list logging : {}", userResponseList);
         log.info("Fetched all users logging using jackson ObjectMapper: {}", objectMapper.writeValueAsString(userResponseList));
         return userResponseList;
     }
@@ -111,7 +113,7 @@ public class UserService {
                 .stream()
                 .map(userMapper::toResponse)
                 .toList();
-        log.info("Saved users : {}", userResponseList);
+        log.info("Saved users : {}", objectMapper.writeValueAsString(userResponseList));
         return userResponseList;
     }
 
@@ -123,7 +125,8 @@ public class UserService {
         user.setUpdatedAt(LocalDateTime.now());
         User savedUser = userRepository.save(user);
         log.info("User status updated. userId={}, status={}", savedUser.getId(), savedUser.getStatus());
-        return userMapper.toResponse(savedUser);
+        UserResponse response = userMapper.toResponse(savedUser);
+        return response;
     }
 
     public List<UserResponse> filterByUserStatus(String userStatus) {
@@ -132,7 +135,7 @@ public class UserService {
                 .map(userMapper::toResponse)
                 .toList();
         //log.info("usersByStatus " + usersByStatus + "{}", usersByStatus);
-        log.info("usersByStatus {} -> {}", userStatus, usersByStatus);
+        log.info("usersByStatus {} -> {}", userStatus, objectMapper.writeValueAsString(usersByStatus));
         return usersByStatus;
     }
 }
