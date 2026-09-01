@@ -1,6 +1,9 @@
 package ecommerce.user_service.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import ecommerce.user_service.exception.InvalidUserStatusException;
+
+import java.util.Locale;
 
 public enum UserStatus {
     ACTIVE,
@@ -9,6 +12,10 @@ public enum UserStatus {
 
     @JsonCreator
     public static UserStatus from(String value) {
-        return UserStatus.valueOf(value.toUpperCase());
+        try {
+            return UserStatus.valueOf(value.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new InvalidUserStatusException(value);
+        }
     }
 }

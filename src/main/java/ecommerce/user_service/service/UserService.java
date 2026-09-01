@@ -53,7 +53,6 @@ public class UserService {
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(id));
-        //log.info("Fetched user : {}", user);
         UserResponse response = userMapper.toResponse(user);
         log.info("Fetched user : {}", objectMapper.writeValueAsString(response));
         return response;
@@ -123,14 +122,17 @@ public class UserService {
 
     public UserResponse updateUserStatus(Long id, UserStatus status) {
 
+//        User user = userRepository.findById(id)
+//                .orElseThrow(() -> new RuntimeException("id not found"));
+
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("id not found"));
+                .orElseThrow(() -> new UserNotFoundException(id));
         user.setStatus(status);
         user.setUpdatedAt(LocalDateTime.now());
         User savedUser = userRepository.save(user);
         log.info("User status updated. userId={}, status={}", savedUser.getId(), savedUser.getStatus());
-        UserResponse response = userMapper.toResponse(savedUser);
-        return response;
+        //UserResponse response = userMapper.toResponse(savedUser);
+        return userMapper.toResponse(savedUser);
     }
 
     public List<UserResponse> filterByUserStatus(String userStatus) {
