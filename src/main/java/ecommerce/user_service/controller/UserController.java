@@ -64,6 +64,21 @@ public class UserController {
         return ResponseEntity.ok(userService.updateUserStatus(id, request.status()));
     }
 
+    //my first version for proper display message
+//    @DeleteMapping("deleteById/{id}/")
+//    public ResponseEntity<String> deleteById(@PathVariable Long id) {
+//        log.info("====deleteById====");
+//        return ResponseEntity.ok(userService.deleteById(id));
+//    }
+
+    //standard way using 204 no content
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteById(@PathVariable Long id) {
+        log.info("====deleteById====");
+        userService.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
 
 
 }

@@ -149,4 +149,15 @@ public class UserService {
         log.info("Users filtered by status. status={}, users={}", userStatus, objectMapper.writeValueAsString(usersByStatus));
         return usersByStatus;
     }
+
+    public void deleteById(Long id) {
+        if (userRepository.existsById(id)) {
+            userRepository.deleteById(id);
+            log.info("deleted user with id {}", id);
+            //return "deleted user with id" + id;
+        } else {
+            log.warn("user with id {} doesn't exist", id);
+            throw new UserNotFoundException(id);
+        }
+    }
 }
