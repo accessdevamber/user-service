@@ -123,13 +123,12 @@ public class UserService {
     }
 
     public List<UserResponse> filterByUserStatus(String userStatus) {
-        log.info("service.......");
         List<UserResponse> usersByStatus = userRepository.findByStatus(UserStatus.from(userStatus))
                 .stream()
                 .map(userMapper::toResponse)
                 .toList();
         //log.info("usersByStatus " + usersByStatus + "{}", usersByStatus);
-        log.info("usersByStatus {} {}", usersByStatus, usersByStatus);
+        log.info("usersByStatus {} -> {}", userStatus, usersByStatus);
         return usersByStatus;
     }
 }
