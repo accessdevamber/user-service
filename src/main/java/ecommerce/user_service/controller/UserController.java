@@ -1,5 +1,6 @@
 package ecommerce.user_service.controller;
 
+import ecommerce.user_service.dto.UpdateUserRequest;
 import ecommerce.user_service.dto.UserRequest;
 import ecommerce.user_service.dto.UserResponse;
 import ecommerce.user_service.dto.UserStatusRequest;
@@ -77,6 +78,13 @@ public class UserController {
         log.info("====deleteById====");
         userService.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    //valid only for firstName,lastName,email and phone
+    @PutMapping("/{id}")
+    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @RequestBody UpdateUserRequest request) {
+        log.info("====updateUser====");
+        return ResponseEntity.ok(userService.updateUser(id, request));
     }
 
 

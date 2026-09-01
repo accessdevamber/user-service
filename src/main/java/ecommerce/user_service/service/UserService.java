@@ -1,5 +1,6 @@
 package ecommerce.user_service.service;
 
+import ecommerce.user_service.dto.UpdateUserRequest;
 import ecommerce.user_service.dto.UserRequest;
 import ecommerce.user_service.dto.UserResponse;
 import ecommerce.user_service.entity.User;
@@ -159,5 +160,27 @@ public class UserService {
             log.warn("user with id {} doesn't exist", id);
             throw new UserNotFoundException(id);
         }
+    }
+
+    public UserResponse updateUser(Long id, UpdateUserRequest request) {
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
+
+        boolean emailTakenByAnotherUser = userRepository.existsByEmailAndIdNot(request.email(), id);
+        if (emailTakenByAnotherUser) {
+            throw new DuplicateEmailException(request.email());
+        }
+
+        user.setFirstName(request.firstName());
+        user.setLastName(request.lastName());
+        user.setPhone(request.phone());
+        user.setEmail(request.email());
+        user.setUpdatedAt(LocalDateTime.now());
+
+        User updatedUser = userRepository.save(user);
+        UserResponse response = userMapper.toResponse(updatedUser);
+        log.info("User updated successfully for userId = {} -> {}", id, objectMapper.writeValueAsString(response));
+        return response;
     }
 }
