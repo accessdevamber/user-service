@@ -4,6 +4,7 @@ import ecommerce.user_service.dto.UserRequest;
 import ecommerce.user_service.dto.UserResponse;
 import ecommerce.user_service.entity.User;
 import ecommerce.user_service.entity.UserStatus;
+import ecommerce.user_service.exception.DuplicateEmailException;
 import ecommerce.user_service.exception.UserNotFoundException;
 import ecommerce.user_service.mapper.UserMapper;
 import ecommerce.user_service.repo.UserRepository;
@@ -25,6 +26,10 @@ public class UserService {
     private final ObjectMapper objectMapper;
 
     public UserResponse createUser(UserRequest request) {
+
+        if (userRepository.existsByEmail(request.email())) {
+            throw new DuplicateEmailException(request.email());
+        }
 
 //        User user = userMapper.toEntity(request);
 //        User user = User.builder()
