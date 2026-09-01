@@ -4,6 +4,7 @@ import ecommerce.user_service.dto.UserRequest;
 import ecommerce.user_service.dto.UserResponse;
 import ecommerce.user_service.entity.User;
 import ecommerce.user_service.entity.UserStatus;
+import ecommerce.user_service.exception.UserNotFoundException;
 import ecommerce.user_service.mapper.UserMapper;
 import ecommerce.user_service.repo.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,8 +48,11 @@ public class UserService {
 
     public UserResponse fetchUserById(Long id) {
 
+//        User user = userRepository.findById(id)
+//                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new UserNotFoundException(id));
         //log.info("Fetched user : {}", user);
         UserResponse response = userMapper.toResponse(user);
         log.info("Fetched user : {}", objectMapper.writeValueAsString(response));
