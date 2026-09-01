@@ -9,6 +9,7 @@ import ecommerce.user_service.repo.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,6 +21,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final ObjectMapper objectMapper;
 
     public UserResponse createUser(UserRequest request) {
 
@@ -58,7 +60,9 @@ public class UserService {
                 //.map(this::toResponse)
                 .map(userMapper::toResponse)
                 .toList();
-        log.info("Fetched all users : {}", userResponseList);
+        log.info("Fetched users count = {}", userResponseList.size());
+        log.info("Fetched all users normal list logging : {}", userResponseList);
+        log.info("Fetched all users logging using jackson ObjectMapper: {}", objectMapper.writeValueAsString(userResponseList));
         return userResponseList;
     }
 

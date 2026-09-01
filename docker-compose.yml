@@ -1,0 +1,47 @@
+services:
+
+  ecom-user-db:
+    image: mysql:9.5
+    container_name: ecom-user-db
+
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ecom_user_db
+
+    ports:
+      - "3307:3306"
+
+    volumes:
+      - ecom-user-db-data:/var/lib/mysql
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+
+  user-service:
+    image: ecom-user-service:1.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: user-service
+
+    ports:
+      - "9090:9090"
+
+    environment:
+      DB_URL: jdbc:mysql://ecom-user-db:3306/ecom_user_db
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
+    depends_on:
+      ecom-user-db:
+        condition: service_healthy
+        #restart: true
+
+
+volumes:
+  ecom-user-db-data:
