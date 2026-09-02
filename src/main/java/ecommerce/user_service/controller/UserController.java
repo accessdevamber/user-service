@@ -6,6 +6,7 @@ import ecommerce.user_service.dto.UserResponse;
 import ecommerce.user_service.dto.UserStatusRequest;
 import ecommerce.user_service.entity.UserStatus;
 import ecommerce.user_service.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -24,7 +25,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/createUser")
-    public ResponseEntity<UserResponse> createUser(@RequestBody UserRequest request) {
+    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
         log.info("====Creating user====");
         UserResponse response = userService.createUser(request);
         return ResponseEntity
@@ -60,7 +61,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<UserResponse> updateUserStatus(@PathVariable Long id, @RequestBody UserStatusRequest request) {
+    public ResponseEntity<UserResponse> updateUserStatus(@PathVariable Long id, @Valid @RequestBody UserStatusRequest request) {
         log.info("====updateUserStatus====");
         return ResponseEntity.ok(userService.updateUserStatus(id, request.status()));
     }
@@ -82,7 +83,7 @@ public class UserController {
 
     //valid only for firstName,lastName,email and phone
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @RequestBody UpdateUserRequest request) {
+    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
         log.info("====updateUser====");
         return ResponseEntity.ok(userService.updateUser(id, request));
     }

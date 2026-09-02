@@ -3,5 +3,7 @@ package ecommerce.user_service.exception;
 public enum ErrorCode {
     USER_NOT_FOUND,
     EMAIL_ALREADY_EXISTS,
-    INVALID_USER_STATUS
+    INVALID_USER_STATUS,
+    INVALID_REQUEST_BODY,
+    VALIDATION_FAILED
 }
