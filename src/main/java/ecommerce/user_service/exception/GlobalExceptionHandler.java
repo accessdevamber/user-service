@@ -6,9 +6,12 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
@@ -94,7 +97,6 @@ public class GlobalExceptionHandler {
                 .stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining(", "));
-
         log.warn("Request validation failed: {}", message);
 
         ErrorResponse errorResponse = new ErrorResponse(
@@ -109,9 +111,44 @@ public class GlobalExceptionHandler {
                 .body(errorResponse);
     }
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException ex) {
+
+        String message = "Invalid value for '" + ex.getName() + "'. Expected type: " + ex.getRequiredType().getSimpleName();
+        log.warn("Method argument type mismatch: {}", message);
+        ErrorResponse errorResponse = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                ErrorCode.INVALID_ARGUMENT_TYPE,
+                message
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(errorResponse);
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(
             HttpMessageNotReadableException ex) {
+
+        Throwable cause = ex.getCause();
+
+        while (cause != null) {
+            if (cause instanceof InvalidUserStatusException invalidStatusEx) {
+                log.warn("Invalid user status: {}", invalidStatusEx.getMessage());
+                ErrorResponse errorResponse = new ErrorResponse(
+                        LocalDateTime.now(),
+                        HttpStatus.BAD_REQUEST.value(),
+                        ErrorCode.INVALID_USER_STATUS,
+                        invalidStatusEx.getMessage()
+                );
+                return ResponseEntity
+                        .status(HttpStatus.BAD_REQUEST)
+                        .body(errorResponse);
+            }
+            cause = cause.getCause();
+        }
 
         log.warn("Invalid request body: {}", ex.getMessage());
 
@@ -120,6 +157,48 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 ErrorCode.INVALID_REQUEST_BODY,
                 Constants.INVALID_REQUEST_BODY_MSG
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(errorResponse);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ErrorResponse> handleHandlerMethodValidationException(
+            HandlerMethodValidationException ex) {
+
+        //old method deprecated now
+//        String message = ex.getParameterValidationResults()
+//                .stream()
+//                .flatMap(result -> result.getResolvableErrors().stream())
+//                .map(error -> error.getDefaultMessage())
+//                .collect(Collectors.joining(", "));
+
+//        String message = ex.getAllErrors()
+//                .stream()
+//                .map(error -> error.getDefaultMessage())
+//                .collect(Collectors.joining(", "));
+//
+//        log.warn("Request validation failed for collection of objects : {}", message);
+
+        String message = ex.getAllErrors()
+                .stream()
+                .map(error -> {
+                    if (error instanceof FieldError fieldError) {
+                        return fieldError.getField() + ": " + fieldError.getDefaultMessage();
+                    }
+                    return error.getDefaultMessage();
+                })
+                .collect(Collectors.joining(", "));
+
+        log.warn("Request validation failed for collection of objects : {}", message);
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                ErrorCode.VALIDATION_FAILED,
+                message
         );
 
         return ResponseEntity

@@ -17,7 +17,7 @@ public enum UserStatus {
         try {
             return UserStatus.valueOf(value.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            //log.warn("Inside catch IllegalArgumentException");
+            log.warn("Inside catch IllegalArgumentException");
             throw new InvalidUserStatusException(value);
         }
     }

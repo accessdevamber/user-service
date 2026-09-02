@@ -15,7 +15,9 @@ import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -93,6 +95,19 @@ public class UserService {
 
     public List<UserResponse> createMultipleUsers(List<UserRequest> userRequestList) {
 
+        Set<String> emails = new HashSet<>();
+        for (UserRequest request : userRequestList) {
+            if (!emails.add(request.email())) {
+                log.warn("duplicate emails present in the input list : {}", request.email());
+                throw new DuplicateEmailException(request.email());
+            }
+            if (userRepository.existsByEmail(request.email())) {
+                log.warn("{} emails already exists in the DB", request.email());
+                throw new DuplicateEmailException(request.email());
+            }
+        }
+
+
         List<User> userList = userMapper.toEntityList(userRequestList)
                 .stream()
                 .toList();
@@ -142,6 +157,7 @@ public class UserService {
     }
 
     public List<UserResponse> filterByUserStatus(String userStatus) {
+        log.info(".....");
         List<UserResponse> usersByStatus = userRepository.findByStatus(UserStatus.from(userStatus))
                 .stream()
                 .map(userMapper::toResponse)
