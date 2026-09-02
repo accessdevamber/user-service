@@ -1,9 +1,6 @@
 package ecommerce.user_service.controller;
 
-import ecommerce.user_service.dto.UpdateUserRequest;
-import ecommerce.user_service.dto.UserRequest;
-import ecommerce.user_service.dto.UserResponse;
-import ecommerce.user_service.dto.UserStatusRequest;
+import ecommerce.user_service.dto.*;
 import ecommerce.user_service.entity.UserStatus;
 import ecommerce.user_service.service.UserService;
 import jakarta.validation.Valid;
@@ -40,6 +37,17 @@ public class UserController {
             @RequestBody List<@Valid UserRequest> userRequestList) {
         log.info("====Creating multiple users====");
         List<UserResponse> userResponseList = userService.createMultipleUsers(userRequestList);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(userResponseList);
+    }
+
+    //bulk same as above
+    @PostMapping("/createBulkUsers")
+    public ResponseEntity<List<UserResponse>> createBulkUsers(@Valid @RequestBody BulkUserRequest request) {
+        log.info("====Creating bulk users====");
+        List<UserResponse> userResponseList = userService.createMultipleUsers(request.users());
+
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(userResponseList);
