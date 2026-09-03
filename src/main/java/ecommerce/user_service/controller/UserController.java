@@ -83,7 +83,6 @@ public class UserController {
     public ResponseEntity<List<UserResponse>> filterByStatus(@RequestParam(defaultValue = "ACTIVE") String userStatus) {
         log.info("====Filtering by user status====");
         UserStatus status = UserStatus.from(userStatus);
-        //return ResponseEntity.ok(userService.filterByUserStatus(userStatus.toUpperCase(Locale.ROOT)));
         return ResponseEntity.ok(userService.filterByUserStatus(status));
     }
 
