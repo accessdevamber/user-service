@@ -24,6 +24,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUserNotFoundException(
             UserNotFoundException ex) {
 
+        log.info("========inside handleUserNotFoundException()========");
         log.warn("User not found: {}", ex.getMessage());
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
@@ -41,6 +42,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleInvalidUserStatusException(
             InvalidUserStatusException ex) {
 
+        log.info("========inside handleInvalidUserStatusException()========");
         log.warn("Invalid user status : {}", ex.getMessage());
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
@@ -58,6 +60,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDuplicateEmailException(
             DuplicateEmailException ex) {
 
+        log.info("========inside handleDuplicateEmailException()========");
         log.warn("Duplicate Email : {}", ex.getMessage());
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
@@ -75,6 +78,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
             DataIntegrityViolationException ex) {
 
+        log.info("========inside handleDataIntegrityViolationException()========");
         log.error("Database constraint violation", ex);
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
@@ -89,9 +93,10 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationException(
+    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(
             MethodArgumentNotValidException ex) {
 
+        log.info("========inside handleMethodArgumentNotValidException()========");
         String message = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
@@ -114,6 +119,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException ex) {
 
+        log.info("========inside handleMethodArgumentTypeMismatchException()========");
         String message = "Invalid value for '" + ex.getName() + "'. Expected type: " + ex.getRequiredType().getSimpleName();
         log.warn("Method argument type mismatch: {}", message);
         ErrorResponse errorResponse = new ErrorResponse(
@@ -132,6 +138,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(
             HttpMessageNotReadableException ex) {
 
+        log.info("========inside handleHttpMessageNotReadableException()========");
         Throwable cause = ex.getCause();
 
         while (cause != null) {
@@ -164,10 +171,12 @@ public class GlobalExceptionHandler {
                 .body(errorResponse);
     }
 
-    @ExceptionHandler(HandlerMethodValidationException.class)
+    //old multiple users list part. handled via MethodArgumentNotValidException in bulk dto case now
+/*    @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<ErrorResponse> handleHandlerMethodValidationException(
             HandlerMethodValidationException ex) {
 
+        log.info("========inside handleHandlerMethodValidationException()========");
         //old method deprecated now
 //        String message = ex.getParameterValidationResults()
 //                .stream()
@@ -203,6 +212,23 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
+                .body(errorResponse);
+    }*/
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+
+        log.info("========inside handleGenericException()========");
+        log.error("Unexpected error occurred", ex);
+        ErrorResponse errorResponse = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                ErrorCode.INTERNAL_SERVER_ERROR,
+                "Something went wrong"
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(errorResponse);
     }
 

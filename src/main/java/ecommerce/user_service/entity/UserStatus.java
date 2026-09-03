@@ -14,10 +14,14 @@ public enum UserStatus {
 
     @JsonCreator
     public static UserStatus from(String value) {
+
+        if (value == null) {
+            throw new InvalidUserStatusException(null);
+        }
+
         try {
             return UserStatus.valueOf(value.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            log.warn("Inside catch IllegalArgumentException");
             throw new InvalidUserStatusException(value);
         }
     }

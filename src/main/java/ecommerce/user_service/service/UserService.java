@@ -156,9 +156,19 @@ public class UserService {
         return userMapper.toResponse(savedUser);
     }
 
-    public List<UserResponse> filterByUserStatus(String userStatus) {
-        log.info(".....");
-        List<UserResponse> usersByStatus = userRepository.findByStatus(UserStatus.from(userStatus))
+//    public List<UserResponse> filterByUserStatus(String userStatus) {
+//        log.info(".....");
+//        List<UserResponse> usersByStatus = userRepository.findByStatus(UserStatus.from(userStatus))
+//                .stream()
+//                .map(userMapper::toResponse)
+//                .toList();
+//        //log.info("usersByStatus " + usersByStatus + "{}", usersByStatus);
+//        log.info("Users filtered by status. status={}, users={}", userStatus, objectMapper.writeValueAsString(usersByStatus));
+//        return usersByStatus;
+//    }
+
+    public List<UserResponse> filterByUserStatus(UserStatus userStatus) {
+        List<UserResponse> usersByStatus = userRepository.findByStatus(userStatus)
                 .stream()
                 .map(userMapper::toResponse)
                 .toList();
