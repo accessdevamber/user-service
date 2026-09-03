@@ -5,10 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-//only all params constructor present in record
-//use userRequest.firstName(), userRequest.phone() etc for getters. No "get" keyword here.
-//no setter
-public record UserRequest(
+public record UpdateUserRequest(
 
         @NotBlank(message = "First name is required")
         @Size(max = 100, message = "First name must not exceed 100 characters")
@@ -28,10 +25,7 @@ public record UserRequest(
                 message = "Phone must be a valid international number with country code"
         )
         @NotBlank
-        String phone,
-
-        @NotBlank(message = "Password is required")
-        @Size(min = 8, max = 100, message = "Password must be between 8 and 100 characters")
-        String password
+        String phone
 ) {
+
 }
