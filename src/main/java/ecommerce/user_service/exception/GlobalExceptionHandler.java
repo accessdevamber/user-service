@@ -215,6 +215,44 @@ public class GlobalExceptionHandler {
                 .body(errorResponse);
     }*/
 
+    @ExceptionHandler(IdempotencyKeyReusedException.class)
+    public ResponseEntity<ErrorResponse> handleIdempotencyKeyReusedException(
+            IdempotencyKeyReusedException ex) {
+
+        log.info("========inside handleIdempotencyKeyReusedException()========");
+        log.warn("Idempotency key reused: {}", ex.getMessage());
+
+        ErrorResponse response = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                ErrorCode.IDEMPOTENCY_KEY_REUSED,
+                ex.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(response);
+    }
+
+    @ExceptionHandler(RequestAlreadyInProgressException.class)
+    public ResponseEntity<ErrorResponse> handleRequestAlreadyInProgressException(
+            RequestAlreadyInProgressException ex) {
+
+        log.info("========inside handleRequestAlreadyInProgressException()========");
+        log.warn("Idempotent request already in progress: {}", ex.getMessage());
+
+        ErrorResponse response = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                ErrorCode.REQUEST_ALREADY_IN_PROGRESS,
+                ex.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
 

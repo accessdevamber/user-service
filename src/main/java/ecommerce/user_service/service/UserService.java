@@ -33,7 +33,6 @@ public class UserService {
         if (userRepository.existsByEmail(request.email())) {
             throw new DuplicateEmailException(request.email());
         }
-
         User savedUser = userRepository.save(userMapper.toEntity(request));
         UserResponse response = userMapper.toResponse(savedUser);
         log.info("Saved user : {}", objectMapper.writeValueAsString(response));

@@ -2,6 +2,7 @@ package ecommerce.user_service.controller;
 
 import ecommerce.user_service.dto.*;
 import ecommerce.user_service.entity.UserStatus;
+import ecommerce.user_service.service.IdempotentUserService;
 import ecommerce.user_service.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -21,11 +22,25 @@ import java.util.Locale;
 public class UserController {
 
     private final UserService userService;
+    private final IdempotentUserService idempotentUserService;
 
     @PostMapping("/createUser")
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
+
         log.info("====Creating user====");
         UserResponse response = userService.createUser(request);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
+    }
+
+    @PostMapping("/createUser/V2")
+    public ResponseEntity<UserResponse> createUser(
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody UserRequest request) {
+
+        log.info("====Creating user. idempotencyKey={}====", idempotencyKey);
+        UserResponse response = idempotentUserService.createUser(idempotencyKey, request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
@@ -35,6 +50,7 @@ public class UserController {
     public ResponseEntity<List<UserResponse>> createMultipleUsers(
             @NotEmpty(message = "User list must not be empty")
             @RequestBody List<@Valid UserRequest> userRequestList) {
+
         log.info("====Creating multiple users====");
         List<UserResponse> userResponseList = userService.createMultipleUsers(userRequestList);
         return ResponseEntity
@@ -45,9 +61,9 @@ public class UserController {
     //bulk same as above
     @PostMapping("/createBulkUsers")
     public ResponseEntity<List<UserResponse>> createBulkUsers(@Valid @RequestBody BulkUserRequest request) {
+
         log.info("====Creating bulk users====");
         List<UserResponse> userResponseList = userService.createMultipleUsers(request.users());
-
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(userResponseList);
@@ -58,12 +74,14 @@ public class UserController {
     //no change needed
     @GetMapping("/fetchById/{id}")
     public ResponseEntity<UserResponse> fetchUserById(@PathVariable Long id) {
+
         log.info("====Fetching userById====");
         return ResponseEntity.ok(userService.fetchUserById(id));
     }
 
     @GetMapping("/fetchAllUsers")
     public ResponseEntity<List<UserResponse>> fetchAllUsers() {
+
         log.info("====Fetching all users====");
         return ResponseEntity.ok(userService.fetchAllUsers());
     }
@@ -81,6 +99,7 @@ public class UserController {
     //can we fix the values entered here out of three status otherwise random breaking
     @GetMapping("/filterByUserStatus")
     public ResponseEntity<List<UserResponse>> filterByStatus(@RequestParam(defaultValue = "ACTIVE") String userStatus) {
+
         log.info("====Filtering by user status====");
         UserStatus status = UserStatus.from(userStatus);
         return ResponseEntity.ok(userService.filterByUserStatus(status));
@@ -244,7 +263,10 @@ public class UserController {
     //{"status": "inactive"}
     //→ 200 OK
     @PatchMapping("/{id}/status")
-    public ResponseEntity<UserResponse> updateUserStatus(@PathVariable Long id, @Valid @RequestBody UserStatusRequest request) {
+    public ResponseEntity<UserResponse> updateUserStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody UserStatusRequest request) {
+
         log.info("====updateUserStatus====");
         return ResponseEntity.ok(userService.updateUserStatus(id, request.status()));
     }
@@ -259,6 +281,7 @@ public class UserController {
     //standard way using 204 no content
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteById(@PathVariable Long id) {
+
         log.info("====deleteById====");
         userService.deleteById(id);
         return ResponseEntity.noContent().build();
@@ -266,13 +289,17 @@ public class UserController {
 
     //valid only for firstName,lastName,email and phone
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
+    public ResponseEntity<UserResponse> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserRequest request) {
+
         log.info("====updateUser====");
         return ResponseEntity.ok(userService.updateUser(id, request));
     }
 
     @GetMapping("/test-generic-error")
     public ResponseEntity<String> testGenericError() {
+
         log.info("====inside testGenericError====");
         throw new IllegalStateException("Testing generic exception handler");
     }

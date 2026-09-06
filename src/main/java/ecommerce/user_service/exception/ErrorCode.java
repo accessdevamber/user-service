@@ -6,6 +6,12 @@ public enum ErrorCode {
     INVALID_USER_STATUS,
     INVALID_REQUEST_BODY,
     INVALID_ARGUMENT_TYPE,
-    INTERNAL_SERVER_ERROR,
-    VALIDATION_FAILED
+    VALIDATION_FAILED,
+
+    //idempotency related error codes
+    IDEMPOTENCY_KEY_REUSED,
+    REQUEST_ALREADY_IN_PROGRESS,
+
+    //generic error code
+    INTERNAL_SERVER_ERROR
 }
