@@ -74,6 +74,25 @@ public class GlobalExceptionHandler {
                 .body(errorResponse);
     }
 
+    //old email db constraint implementation
+//    @ExceptionHandler(DataIntegrityViolationException.class)
+//    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
+//            DataIntegrityViolationException ex) {
+//
+//        log.info("========inside handleDataIntegrityViolationException()========");
+//        log.error("Database constraint violation", ex);
+//        ErrorResponse errorResponse = new ErrorResponse(
+//                LocalDateTime.now(),
+//                HttpStatus.CONFLICT.value(),
+//                ErrorCode.EMAIL_ALREADY_EXISTS,
+//                Constants.DUPLICATE_VALUE_ERROR_MSG
+//        );
+//
+//        return ResponseEntity
+//                .status(HttpStatus.CONFLICT)
+//                .body(errorResponse);
+//    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
             DataIntegrityViolationException ex) {
@@ -83,8 +102,8 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.CONFLICT.value(),
-                ErrorCode.EMAIL_ALREADY_EXISTS,
-                Constants.DUPLICATE_VALUE_ERROR_MSG
+                ErrorCode.DATA_INTEGRITY_VIOLATION,
+                Constants.DATA_INTEGRITY_VIOLATION_MSG
         );
 
         return ResponseEntity

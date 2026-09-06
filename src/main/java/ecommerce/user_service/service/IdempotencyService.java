@@ -25,6 +25,7 @@ public class IdempotencyService {
         this.objectMapper = objectMapper;
     }
 
+    //1st approach for idempotent user creation
     public Optional<UserResponse> findCompletedResponse(String key, String requestHash) {
 
         Optional<IdempotencyKey> existingOptional = repository.findByIdempotencyKey(key);
@@ -54,6 +55,7 @@ public class IdempotencyService {
 //        }
     }
 
+    //1st approach for idempotent user creation
     public IdempotencyKey createInProgress(String key, String requestHash) {
 
         LocalDateTime now = LocalDateTime.now();
@@ -77,6 +79,45 @@ public class IdempotencyService {
         record.setHttpStatus(httpStatus);
         record.setUpdatedAt(LocalDateTime.now());
         IdempotencyKey idempotencyKey = repository.save(record);
-        log.info("IdempotencyKey status changed to {} for idempotencyKey {}", IdempotencyStatus.COMPLETED, idempotencyKey);
+        log.info("IdempotencyKey status changed to {} for idempotencyKey {}",
+                IdempotencyStatus.COMPLETED,
+                idempotencyKey.getIdempotencyKey());
+    }
+
+    public int tryClaim(String idempotencyKey, String requestHash) {
+
+        int inserted = repository.tryClaim(idempotencyKey, requestHash);
+        log.info("Idempotency claim result. key={}, inserted={}", idempotencyKey, inserted);
+        return inserted;
+    }
+
+    public IdempotencyKey getByKey(String idempotencyKey) {
+
+        return repository.findByIdempotencyKey(idempotencyKey)
+                .orElseThrow(() -> new IllegalStateException("Idempotency record not found: " + idempotencyKey));
+    }
+
+    public UserResponse getExistingResponse(String idempotencyKey, String requestHash) {
+
+        IdempotencyKey existing = repository.findByIdempotencyKey(idempotencyKey)
+                .orElseThrow(() -> new IllegalStateException("Idempotency record not found after claim collision"));
+
+        // Same key but DIFFERENT request
+        if (!existing.getRequestHash().equals(requestHash)) {
+            log.warn("idempotencyKey reused for different request. Could be malicious request.");
+            throw new IdempotencyKeyReusedException(idempotencyKey);
+        }
+
+        // Same key + same request, but still processing
+        if (existing.getStatus() == IdempotencyStatus.IN_PROGRESS) {
+            log.warn("idempotencyKey {} already claimed by different request. IdempotencyKey creation in progress.",
+                    idempotencyKey);
+            throw new RequestAlreadyInProgressException(idempotencyKey);
+        }
+
+        // Same key + same request + already completed
+        String responseBody = existing.getResponseBody();
+        log.info("Duplicate request. Returning old response {}", responseBody);
+        return objectMapper.readValue(responseBody, UserResponse.class);
     }
 }

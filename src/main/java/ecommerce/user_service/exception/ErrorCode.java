@@ -12,6 +12,7 @@ public enum ErrorCode {
     IDEMPOTENCY_KEY_REUSED,
     REQUEST_ALREADY_IN_PROGRESS,
 
-    //generic error code
+    //generic error codes
+    DATA_INTEGRITY_VIOLATION,
     INTERNAL_SERVER_ERROR
 }
