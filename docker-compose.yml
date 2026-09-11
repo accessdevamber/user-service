@@ -5,7 +5,8 @@ services:
     container_name: ecom-user-db
 
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      #MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ecom_user_db
 
     ports:
@@ -15,7 +16,11 @@ services:
       - ecom-user-db-data:/var/lib/mysql
 
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      #test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"] old no .env setup
+
+      #The double $ is intentional here: it prevents Compose from expanding it on the host and
+      #lets the variable be evaluated inside the MySQL container.
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -34,8 +39,10 @@ services:
 
     environment:
       DB_URL: jdbc:mysql://ecom-user-db:3306/ecom_user_db
-      DB_USERNAME: root
-      DB_PASSWORD: root
+#      DB_USERNAME: root
+#      DB_PASSWORD: root
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
 
     depends_on:
       ecom-user-db:
