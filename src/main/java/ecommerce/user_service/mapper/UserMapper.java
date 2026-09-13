@@ -30,4 +30,6 @@ public interface UserMapper {
     //can use mvn compile to generate impl class rather than whole mvn clean install cmd
     // or use in intellij user-service->lifecycle->compile to do it
     List<User> toEntityList(List<UserRequest> requests);
+
+    List<UserResponse> toResponse(List<User> user);
 }

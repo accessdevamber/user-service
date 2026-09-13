@@ -16,12 +16,14 @@ public enum UserStatus {
     public static UserStatus from(String value) {
 
         if (value == null) {
+            log.warn("user status cannot be null");
             throw new InvalidUserStatusException(null);
         }
 
         try {
             return UserStatus.valueOf(value.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
+            log.warn("user status {} is invalid", value);
             throw new InvalidUserStatusException(value);
         }
     }

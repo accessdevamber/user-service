@@ -122,12 +122,51 @@ public class UserController {
     // The valid characters are defined in RFC 7230 and RFC 3986
     //http://localhost:9090/users/filterByUserStatus?userStatus={}
     //can we fix the values entered here out of three status otherwise random breaking
+
+
+    /**
+     * @deprecated Use {@link #filterByStatusPaginated(String, Long, int)} instead.
+     * This endpoint does not support pagination or sorting.
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
     @GetMapping("/filterByUserStatus")
-    public ResponseEntity<List<UserResponse>> filterByStatus(@RequestParam(defaultValue = "ACTIVE") String userStatus) {
+    public ResponseEntity<List<UserResponse>> filterByStatus(
+            @RequestParam(defaultValue = "ACTIVE") String userStatus) {
 
         log.info("====Filtering by user status====");
         UserStatus status = UserStatus.from(userStatus);
         return ResponseEntity.ok(userService.filterByUserStatus(status));
+    }
+
+    //http://localhost:9090/users/filterByUserStatus/V2?userStatus=ACTIVE&cursor=10&size=3
+    //=====means below=====
+    //Your repository method conceptually produces:
+    //
+    //SELECT *
+    //FROM users
+    //WHERE status = 'ACTIVE'
+    //  AND id > 10
+    //ORDER BY id ASC
+    //LIMIT 3;
+    //
+    //Now the mapping is very clear:
+    //
+    //cursor=10  → id > 10
+    //size=3     → LIMIT 3
+    //
+    //So:
+    //
+    //cursor tells the database where to continue from
+    //size tells the database how many records to return
+    @GetMapping("/filterByUserStatus/V2")
+    public ResponseEntity<CursorPageResponse<UserResponse>> filterByStatusPaginated(
+            @RequestParam(defaultValue = "ACTIVE", required = false) String userStatus,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "5", required = false) int size) {
+
+        log.info("====Filtering by user status paginated====");
+        UserStatus status = UserStatus.from(userStatus);
+        return ResponseEntity.ok(userService.filterByUserStatusPaginated(status, cursor, size));
     }
 
 

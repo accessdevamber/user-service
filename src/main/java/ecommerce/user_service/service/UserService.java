@@ -1,9 +1,6 @@
 package ecommerce.user_service.service;
 
-import ecommerce.user_service.dto.PageResponse;
-import ecommerce.user_service.dto.UpdateUserRequest;
-import ecommerce.user_service.dto.UserRequest;
-import ecommerce.user_service.dto.UserResponse;
+import ecommerce.user_service.dto.*;
 import ecommerce.user_service.entity.User;
 import ecommerce.user_service.entity.UserStatus;
 import ecommerce.user_service.exception.DuplicateEmailException;
@@ -68,7 +65,8 @@ public class UserService {
                 .map(userMapper::toResponse)
                 .toList();
         log.info("Fetched users count = {}", userResponseList.size());
-        log.info("Fetched all users logging using jackson ObjectMapper: {}", objectMapper.writeValueAsString(userResponseList));
+        log.info("Fetched all users logging using jackson ObjectMapper: {}",
+                objectMapper.writeValueAsString(userResponseList));
         return userResponseList;
     }
 
@@ -104,7 +102,8 @@ public class UserService {
                 .map(user -> userMapper.toResponse(user));
 
         //log.info("Fetched users page = {}", userResponseList);
-        log.info("Fetched all users paginated. logging using jackson ObjectMapper: {}", objectMapper.writeValueAsString(userResponse));
+        log.info("Fetched all users paginated. logging using jackson ObjectMapper: {}",
+                objectMapper.writeValueAsString(userResponse));
         //pages.getContent() returns a List<Course> containing only the records for the requested page,
         // based on your Pageable (like page number and size).
         log.info("Fetched users paginated content = {}", userResponse.getContent());
@@ -122,7 +121,8 @@ public class UserService {
         log.info("Fetched users paginated current page number = {}", userResponse.getNumber());
 
         //This line returns the number of elements on the current page from a Page<?> object.
-        log.info("Fetched users paginated number of elements on the current page = {}", userResponse.getNumberOfElements());
+        log.info("Fetched users paginated number of elements on the current page = {}",
+                userResponse.getNumberOfElements());
 
         //returns the total count of records in the database that match the query, not just what's on the current page.
         log.info("Fetched users paginated the total count of records = {}", userResponse.getTotalElements());
@@ -179,8 +179,76 @@ public class UserService {
                 .stream()
                 .map(userMapper::toResponse)
                 .toList();
-        log.info("Users filtered by status. status={}, users={}", userStatus, objectMapper.writeValueAsString(usersByStatus));
+        log.info("Users filtered by status. status={}, users={}",
+                userStatus,
+                objectMapper.writeValueAsString(usersByStatus));
         return usersByStatus;
+    }
+
+    public CursorPageResponse<UserResponse> filterByUserStatusPaginated(
+            UserStatus userStatus,
+            Long cursor,
+            int size) {
+
+        // Ask DB for ONE extra record
+        Pageable pageable = PageRequest.of(0, size + 1);
+        List<User> users;
+
+        if (cursor == null) {
+            log.info("cursor value null");
+            users = userRepository.findByStatusOrderByIdAsc(
+                    userStatus,
+                    pageable);
+        } else {
+            log.info("cursor value is {}", cursor);
+            users = userRepository.findByStatusAndIdGreaterThanOrderByIdAsc(
+                    userStatus,
+                    cursor,
+                    pageable
+            );
+        }
+        // If we received more than requested size,
+        // another batch exists.
+        boolean hasNext = users.size() > size;
+        List<User> usersToReturn = hasNext
+                //public abstract List<E> subList(
+                //    int fromIndex,
+                //    int toIndex
+                //)
+                //Returns a view of the portion of this list between the specified fromIndex, inclusive, and toIndex, exclusive.
+
+                // (If fromIndex and toIndex are equal, the returned list is empty.)
+                // The returned list is backed by this list, so non-structural changes in the returned list are reflected in this list,
+                // and vice-versa.
+                // The returned list supports all of the optional list operations supported by this list.
+                ? users.subList(0, size)//size is exclusive so last record gets removed
+                : users;
+        Long nextCursor = null;
+        // Remove the extra record before returning response.
+        //List<User> usersToReturn;
+        if (hasNext && !usersToReturn.isEmpty()) {
+            log.info("hasNext is true. More records exist");
+            // Last returned user's ID becomes the next cursor.
+            nextCursor = usersToReturn.get(usersToReturn.size() - 1).getId();
+        } else {
+            log.info("hasNext is false. End of records");
+            //usersToReturn = users;
+        }
+        List<UserResponse> content = userMapper.toResponse(usersToReturn);
+        log.info("Users filtered by status paginated. status={}, users={}",
+                userStatus,
+                objectMapper.writeValueAsString(content));
+
+
+//        if (!usersToReturn.isEmpty()) {
+//            nextCursor = usersToReturn.get(usersToReturn.size() - 1).getId();
+//        }
+        log.info("nextCursor is {}", nextCursor);
+        return new CursorPageResponse<>(
+                content,
+                nextCursor,
+                hasNext
+        );
     }
 
     public void deleteById(Long id) {
