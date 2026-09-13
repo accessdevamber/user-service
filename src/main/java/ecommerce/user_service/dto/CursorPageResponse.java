@@ -2,9 +2,9 @@ package ecommerce.user_service.dto;
 
 import java.util.List;
 
-public record CursorPageResponse<T>(
+public record CursorPageResponse<T, C>(
         List<T> content,
-        Long nextCursor,
+        C nextCursor,
         boolean hasNext
 ) {
 }

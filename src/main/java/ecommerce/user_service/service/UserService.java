@@ -187,7 +187,7 @@ public class UserService {
         return usersByStatus;
     }
 
-    public CursorPageResponse<UserResponse> filterByUserStatusPaginated(
+    public CursorPageResponse<UserResponse, Long> filterByUserStatusPaginated(
             UserStatus userStatus,
             Long cursor,
             int size) {
@@ -296,7 +296,9 @@ public class UserService {
         }
     }
 
-    public UserResponse updateUser(Long id, UpdateUserRequest request) {
+    public UserResponse updateUser(
+            Long id,
+            UpdateUserRequest request) {
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(id));
@@ -313,5 +315,78 @@ public class UserService {
         UserResponse response = userMapper.toResponse(updatedUser);
         log.info("User updated successfully for userId = {} -> {}", id, objectMapper.writeValueAsString(response));
         return response;
+    }
+
+    public CursorPageResponse<UserResponse, String> filterByStatusCursorFirstName(
+            UserStatus status,
+            String cursor,
+            int size,
+            String direction) {
+
+        if (size <= 0) {
+            throw new IllegalArgumentException("Size must be greater than 0");
+        }
+
+        if (size > 100) {
+            throw new IllegalArgumentException("Size cannot be greater than 100");
+        }
+
+        if (!direction.equalsIgnoreCase("asc")
+                && !direction.equalsIgnoreCase("desc")) {
+
+            throw new IllegalArgumentException("Direction must be asc or desc");
+        }
+
+        // fetch one extra record
+        Pageable pageable = PageRequest.of(0, size + 1);
+        List<User> users;
+        if (direction.equalsIgnoreCase("asc")) {
+            if (cursor == null) {
+                users = userRepository.findByStatusOrderByFirstNameAsc(
+                        status,
+                        pageable
+                );
+
+            } else {
+                users = userRepository.findAfterFirstNameAsc(
+                        status,
+                        cursor,
+                        pageable
+                );
+            }
+
+        } else {
+            if (cursor == null) {
+                users = userRepository.findByStatusOrderByFirstNameDesc(
+                        status,
+                        pageable
+                );
+            } else {
+                users = userRepository.findAfterFirstNameDesc(
+                        status,
+                        cursor,
+                        pageable
+                );
+            }
+        }
+
+        boolean hasNext = users.size() > size;
+        List<User> usersToReturn = hasNext
+                        ? users.subList(0, size)
+                        : users;
+
+        String nextCursor = null;
+        if (hasNext && !usersToReturn.isEmpty()) {
+            User lastUser = usersToReturn.get(usersToReturn.size() - 1);
+            nextCursor = lastUser.getFirstName();
+        }
+
+        List<UserResponse> content = userMapper.toResponse(usersToReturn);
+
+        return new CursorPageResponse<>(
+                content,
+                nextCursor,
+                hasNext
+        );
     }
 }

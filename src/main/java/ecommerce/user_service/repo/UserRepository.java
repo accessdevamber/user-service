@@ -72,4 +72,40 @@ public interface UserRepository extends JpaRepository<User, Long> {
             UserStatus status,
             Pageable pageable
     );
+
+    @Query("""
+       SELECT u
+       FROM User u
+       WHERE u.status = :status
+         AND u.firstName > :cursor
+       ORDER BY u.firstName ASC
+       """)
+    List<User> findAfterFirstNameAsc(
+            @Param("status") UserStatus status,
+            @Param("cursor") String cursor,
+            Pageable pageable
+    );
+
+    @Query("""
+       SELECT u
+       FROM User u
+       WHERE u.status = :status
+         AND u.firstName < :cursor
+       ORDER BY u.firstName DESC
+       """)
+    List<User> findAfterFirstNameDesc(
+            @Param("status") UserStatus status,
+            @Param("cursor") String cursor,
+            Pageable pageable
+    );
+
+    List<User> findByStatusOrderByFirstNameAsc(
+            UserStatus status,
+            Pageable pageable
+    );
+
+    List<User> findByStatusOrderByFirstNameDesc(
+            UserStatus status,
+            Pageable pageable
+    );
 }

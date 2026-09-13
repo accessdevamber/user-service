@@ -159,7 +159,7 @@ public class UserController {
     //cursor tells the database where to continue from
     //size tells the database how many records to return
     @GetMapping("/filterByUserStatus/V2")
-    public ResponseEntity<CursorPageResponse<UserResponse>> filterByStatusPaginated(
+    public ResponseEntity<CursorPageResponse<UserResponse, Long>> filterByStatusPaginated(
             @RequestParam(defaultValue = "ACTIVE", required = false) String userStatus,
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "5", required = false) int size) {
@@ -167,6 +167,29 @@ public class UserController {
         log.info("====Filtering by user status paginated====");
         UserStatus status = UserStatus.from(userStatus);
         return ResponseEntity.ok(userService.filterByUserStatusPaginated(status, cursor, size));
+    }
+
+    @GetMapping("/filterByStatusCursorFirstName")
+    public ResponseEntity<CursorPageResponse<UserResponse, String>> filterByStatusCursorFirstName(
+            @RequestParam(defaultValue = "ACTIVE") String userStatus,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "asc") String direction) {
+
+        log.info("Filtering by status using firstName cursor. status={}, cursor={}, size={}, direction={}",
+                userStatus,
+                cursor,
+                size,
+                direction
+        );
+        UserStatus status = UserStatus.from(userStatus);
+        return ResponseEntity.ok(userService.filterByStatusCursorFirstName(
+                        status,
+                        cursor,
+                        size,
+                        direction
+                )
+        );
     }
 
 
