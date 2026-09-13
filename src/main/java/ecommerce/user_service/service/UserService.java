@@ -6,6 +6,7 @@ import ecommerce.user_service.entity.UserStatus;
 import ecommerce.user_service.exception.DuplicateEmailException;
 import ecommerce.user_service.exception.UserNotFoundException;
 import ecommerce.user_service.mapper.UserMapper;
+import ecommerce.user_service.repo.UserJdbcRepository;
 import ecommerce.user_service.repo.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final ObjectMapper objectMapper;
+    private final UserJdbcRepository userJdbcRepository;
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
             "id",
             "firstName",
@@ -190,6 +192,18 @@ public class UserService {
             Long cursor,
             int size) {
 
+        if (size <= 0) {
+            throw new IllegalArgumentException("Size must be greater than 0");
+        }
+
+        if (size > 100) {
+            throw new IllegalArgumentException("Size cannot be greater than 100");
+        }
+
+        if (cursor != null && cursor < 0) {
+            throw new IllegalArgumentException("Cursor cannot be negative");
+        }
+
         // Ask DB for ONE extra record
         Pageable pageable = PageRequest.of(0, size + 1);
         List<User> users;
@@ -201,11 +215,32 @@ public class UserService {
                     pageable);
         } else {
             log.info("cursor value is {}", cursor);
-            users = userRepository.findByStatusAndIdGreaterThanOrderByIdAsc(
+//            users = userRepository.findByStatusAndIdGreaterThanOrderByIdAsc(
+//                    userStatus,
+//                    cursor,
+//                    pageable
+//            );
+
+            //JPQL
+//            users = userRepository.findUsersAfterCursor(
+//                    userStatus,
+//                    cursor,
+//                    pageable
+//            );
+
+            //native query using jpa
+//            users = userRepository.findUsersAfterCursorNative(
+//                    userStatus.name(),
+//                    cursor,
+//                    size + 1
+//            );
+
+            //jdbcTemplate way
+            users = userJdbcRepository.findUsersAfterCursor(
                     userStatus,
                     cursor,
-                    pageable
-            );
+                    size + 1
+                    );
         }
         // If we received more than requested size,
         // another batch exists.
@@ -224,7 +259,7 @@ public class UserService {
                 ? users.subList(0, size)//size is exclusive so last record gets removed
                 : users;
         Long nextCursor = null;
-        // Remove the extra record before returning response.
+        //Remove the extra record before returning response.
         //List<User> usersToReturn;
         if (hasNext && !usersToReturn.isEmpty()) {
             log.info("hasNext is true. More records exist");

@@ -4,6 +4,8 @@ import ecommerce.user_service.entity.User;
 import ecommerce.user_service.entity.UserStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -30,6 +32,40 @@ public interface UserRepository extends JpaRepository<User, Long> {
             UserStatus status,
             Long id,
             Pageable pageable
+    );
+
+    //Here JPQL uses entity field names:
+    //
+    //User
+    //status
+    //id
+    //
+    //not DB table/column names.
+    @Query("""
+       SELECT u
+       FROM User u
+       WHERE u.status = :status
+         AND u.id > :cursor
+       ORDER BY u.id ASC
+       """)
+    List<User> findUsersAfterCursor(
+            @Param("status") UserStatus status,
+            @Param("cursor") Long cursor,
+            Pageable pageable
+    );
+
+    @Query(value = """
+       SELECT *
+       FROM users
+       WHERE status = :status
+         AND id > :cursor
+       ORDER BY id ASC
+       LIMIT :limit
+       """, nativeQuery = true)
+    List<User> findUsersAfterCursorNative(
+            @Param("status") String status,
+            @Param("cursor") Long cursor,
+            @Param("limit") int limit
     );
 
     List<User> findByStatusOrderByIdAsc(
