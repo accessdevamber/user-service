@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -46,6 +47,11 @@ public class UserController {
                 .body(response);
     }
 
+    /**
+     * @deprecated Use {@link #createBulkUsers(BulkUserRequest)} instead.
+     * BulkUserRequest provides cleaner request validation.
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
     @PostMapping("/createMultipleUsers")
     public ResponseEntity<List<UserResponse>> createMultipleUsers(
             @NotEmpty(message = "User list must not be empty")
@@ -79,11 +85,30 @@ public class UserController {
         return ResponseEntity.ok(userService.fetchUserById(id));
     }
 
+    /**
+     * @deprecated Use {@link #fetchAllUsersPaginated(int, int, String, String)}
+     * instead. This endpoint does not support pagination or sorting.
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
     @GetMapping("/fetchAllUsers")
     public ResponseEntity<List<UserResponse>> fetchAllUsers() {
 
         log.info("====Fetching all users====");
         return ResponseEntity.ok(userService.fetchAllUsers());
+    }
+
+    //fetch all users with pagination
+    @GetMapping("/fetchAllUsers/V2")
+    public ResponseEntity<PageResponse<UserResponse>> fetchAllUsersPaginated(
+            @RequestParam(defaultValue = "0", required = false) int page,
+            @RequestParam(defaultValue = "5", required = false) int size,
+            @RequestParam(defaultValue = "id", required = false) String sortBy,
+            @RequestParam(defaultValue = "asc", required = false) String direction
+    ) {
+
+        log.info("==== Fetching all users with pagination ====");
+        log.info("====Fetching users page={}, size={}====", page, size);
+        return ResponseEntity.ok(userService.fetchAllUsersPaginated(page, size, sortBy, direction));
     }
 
     //http://localhost:9090/users/filterByUserStatus?userStatus= -> considers active
@@ -104,7 +129,6 @@ public class UserController {
         UserStatus status = UserStatus.from(userStatus);
         return ResponseEntity.ok(userService.filterByUserStatus(status));
     }
-
 
 
     //=====OLD observations=====

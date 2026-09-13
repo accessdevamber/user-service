@@ -7,6 +7,7 @@ public enum ErrorCode {
     INVALID_REQUEST_BODY,
     INVALID_ARGUMENT_TYPE,
     VALIDATION_FAILED,
+    INVALID_ARGUMENT,
 
     //idempotency related error codes
     IDEMPOTENCY_KEY_REUSED,

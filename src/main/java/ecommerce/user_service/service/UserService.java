@@ -1,5 +1,6 @@
 package ecommerce.user_service.service;
 
+import ecommerce.user_service.dto.PageResponse;
 import ecommerce.user_service.dto.UpdateUserRequest;
 import ecommerce.user_service.dto.UserRequest;
 import ecommerce.user_service.dto.UserResponse;
@@ -11,6 +12,10 @@ import ecommerce.user_service.mapper.UserMapper;
 import ecommerce.user_service.repo.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
@@ -27,6 +32,14 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final ObjectMapper objectMapper;
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "id",
+            "firstName",
+            "lastName",
+            "email",
+            "createdAt",
+            "updatedAt"
+    );
 
     public UserResponse createUser(UserRequest request) {
 
@@ -57,6 +70,73 @@ public class UserService {
         log.info("Fetched users count = {}", userResponseList.size());
         log.info("Fetched all users logging using jackson ObjectMapper: {}", objectMapper.writeValueAsString(userResponseList));
         return userResponseList;
+    }
+
+    public PageResponse<UserResponse> fetchAllUsersPaginated(
+            int page,
+            int size,
+            String sortBy,
+            String direction) {
+
+        if (page < 0) {
+            throw new IllegalArgumentException("Page number cannot be negative");
+        }
+        if (size <= 0) {
+            throw new IllegalArgumentException("Page size must be greater than 0");
+        }
+        if (size > 100) {
+            throw new IllegalArgumentException("Page size cannot be greater than 100");
+        }
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            throw new IllegalArgumentException("Invalid sort field: " + sortBy);
+        }
+        if (!direction.equalsIgnoreCase("asc") && !direction.equalsIgnoreCase("desc")) {
+            throw new IllegalArgumentException("Invalid sort direction: " + direction);
+        }
+
+        Sort sort = direction.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+        //Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<User> users = userRepository.findAll(pageable);
+        Page<UserResponse> userResponse = users
+                .map(user -> userMapper.toResponse(user));
+
+        //log.info("Fetched users page = {}", userResponseList);
+        log.info("Fetched all users paginated. logging using jackson ObjectMapper: {}", objectMapper.writeValueAsString(userResponse));
+        //pages.getContent() returns a List<Course> containing only the records for the requested page,
+        // based on your Pageable (like page number and size).
+        log.info("Fetched users paginated content = {}", userResponse.getContent());
+
+        //This method returns the page size, i.e., the maximum number of elements per page
+        // as specified in your PageRequest.
+        log.info("Fetched users paginated size  i.e per page = {}", userResponse.getSize());
+
+        // example : 4(since total records are 14, and 4 records are on each page.
+        // Total 4 pages, with 4 records each on first 3 pages and 2 records on 4th page)
+        log.info("Fetched users paginated total pages = {}", userResponse.getTotalPages());
+
+        //This line retrieves the current page number
+        //1st page means 0 index
+        log.info("Fetched users paginated current page number = {}", userResponse.getNumber());
+
+        //This line returns the number of elements on the current page from a Page<?> object.
+        log.info("Fetched users paginated number of elements on the current page = {}", userResponse.getNumberOfElements());
+
+        //returns the total count of records in the database that match the query, not just what's on the current page.
+        log.info("Fetched users paginated the total count of records = {}", userResponse.getTotalElements());
+        return new PageResponse<>(
+                userResponse.getContent(),
+                userResponse.getNumber(),
+                userResponse.getSize(),
+                userResponse.getTotalElements(),
+                userResponse.getTotalPages(),
+                userResponse.isFirst(),
+                userResponse.isLast(),
+                sortBy,
+                direction.toLowerCase()
+        );
     }
 
     public List<UserResponse> createMultipleUsers(List<UserRequest> userRequestList) {
