@@ -317,54 +317,156 @@ public class UserService {
         return response;
     }
 
-    public CursorPageResponse<UserResponse, String> filterByStatusCursorFirstName(
+//    public CursorPageResponse<UserResponse, String> filterByStatusCursorFirstName(
+//            UserStatus status,
+//            String cursor,
+//            int size,
+//            String direction) {
+//
+//        if (size <= 0) {
+//            throw new IllegalArgumentException("Size must be greater than 0");
+//        }
+//
+//        if (size > 100) {
+//            throw new IllegalArgumentException("Size cannot be greater than 100");
+//        }
+//
+//        if (!direction.equalsIgnoreCase("asc")
+//                && !direction.equalsIgnoreCase("desc")) {
+//
+//            throw new IllegalArgumentException("Direction must be asc or desc");
+//        }
+//
+//        // fetch one extra record
+//        Pageable pageable = PageRequest.of(0, size + 1);
+//        List<User> users;
+//        if (direction.equalsIgnoreCase("asc")) {
+//            log.info("sorting by firstName ascending order");
+//            if (cursor == null) {
+//                log.info("cursor firstName value is null");
+//                users = userRepository.findByStatusOrderByFirstNameAsc(
+//                        status,
+//                        pageable
+//                );
+//
+//            } else {
+//                log.info("cursor firstName value is {}", cursor);
+//                users = userRepository.findAfterFirstNameAsc(
+//                        status,
+//                        cursor,
+//                        pageable
+//                );
+//            }
+//
+//        } else {
+//            log.info("sorting by firstName descending order");
+//            if (cursor == null) {
+//                log.info("cursor firstName value is null");
+//                users = userRepository.findByStatusOrderByFirstNameDesc(
+//                        status,
+//                        pageable
+//                );
+//            } else {
+//                log.info("cursor firstName value is {}", cursor);
+//                users = userRepository.findAfterFirstNameDesc(
+//                        status,
+//                        cursor,
+//                        pageable
+//                );
+//            }
+//        }
+//
+//        boolean hasNext = users.size() > size;
+//        List<User> usersToReturn = hasNext
+//                        ? users.subList(0, size)
+//                        : users;
+//
+//        String nextCursor = null;
+//        if (hasNext && !usersToReturn.isEmpty()) {
+//            log.info("hasNext for firstName is true");
+//            User lastUser = usersToReturn.get(usersToReturn.size() - 1);
+//            nextCursor = lastUser.getFirstName();
+//            log.info("nextCursor for firstName is {}", nextCursor);
+//        }
+//
+//        List<UserResponse> content = userMapper.toResponse(usersToReturn);
+//        log.info("UserResponse content {}", objectMapper.writeValueAsString(content));
+//        return new CursorPageResponse<>(
+//                content,
+//                nextCursor,
+//                hasNext
+//        );
+//    }
+
+    public CursorPageResponse<UserResponse, FirstNameCursor> filterByStatusCursorFirstName(
             UserStatus status,
-            String cursor,
+            String cursorFirstName,
+            Long cursorId,
             int size,
             String direction) {
 
         if (size <= 0) {
+            log.warn("size less than or equal to 0");
             throw new IllegalArgumentException("Size must be greater than 0");
         }
 
         if (size > 100) {
+            log.warn("size greater than 100");
             throw new IllegalArgumentException("Size cannot be greater than 100");
         }
 
         if (!direction.equalsIgnoreCase("asc")
                 && !direction.equalsIgnoreCase("desc")) {
-
+            log.warn("sort direction {} invalid", direction);
             throw new IllegalArgumentException("Direction must be asc or desc");
         }
 
-        // fetch one extra record
+        if ((cursorFirstName == null && cursorId != null)
+                || (cursorFirstName != null && cursorId == null)) {
+            log.warn(
+                    "Invalid composite cursor: cursorFirstName and cursorId must either both be provided or both be absent. " +
+                            "cursorFirstName={}, cursorId={}",
+                    cursorFirstName,
+                    cursorId
+            );
+            throw new IllegalArgumentException("cursorFirstName and cursorId must either both be provided" +
+                    " or both be absent");
+        }
+
         Pageable pageable = PageRequest.of(0, size + 1);
         List<User> users;
         if (direction.equalsIgnoreCase("asc")) {
-            if (cursor == null) {
-                users = userRepository.findByStatusOrderByFirstNameAsc(
+            log.info("sorting by firstName and Id in ascending order");
+            if (cursorFirstName == null) {
+                log.info("cursor firstName value is null");
+                users = userRepository.findByStatusOrderByFirstNameAscIdAsc(
                         status,
                         pageable
                 );
-
             } else {
+                log.info("cursor firstName value is {}", cursorFirstName);
                 users = userRepository.findAfterFirstNameAsc(
                         status,
-                        cursor,
+                        cursorFirstName,
+                        cursorId,
                         pageable
                 );
             }
 
         } else {
-            if (cursor == null) {
-                users = userRepository.findByStatusOrderByFirstNameDesc(
+            log.info("sorting by firstName and Id in descending order");
+            if (cursorFirstName == null) {
+                log.info("cursor firstName value is null");
+                users = userRepository.findByStatusOrderByFirstNameDescIdDesc(
                         status,
                         pageable
                 );
             } else {
+                log.info("cursor firstName value is {}", cursorFirstName);
                 users = userRepository.findAfterFirstNameDesc(
                         status,
-                        cursor,
+                        cursorFirstName,
+                        cursorId,
                         pageable
                 );
             }
@@ -375,14 +477,18 @@ public class UserService {
                         ? users.subList(0, size)
                         : users;
 
-        String nextCursor = null;
+        FirstNameCursor nextCursor = null;
         if (hasNext && !usersToReturn.isEmpty()) {
+            log.info("hasNext for firstName is true");
             User lastUser = usersToReturn.get(usersToReturn.size() - 1);
-            nextCursor = lastUser.getFirstName();
+            nextCursor = new FirstNameCursor(
+                    lastUser.getFirstName(),
+                    lastUser.getId()
+            );
+            log.info("nextCursor for firstName and id is {}, {}", nextCursor.firstName(), nextCursor.id());
         }
-
         List<UserResponse> content = userMapper.toResponse(usersToReturn);
-
+        log.info("UserResponse content {}", objectMapper.writeValueAsString(content));
         return new CursorPageResponse<>(
                 content,
                 nextCursor,

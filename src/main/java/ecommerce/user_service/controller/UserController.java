@@ -169,25 +169,31 @@ public class UserController {
         return ResponseEntity.ok(userService.filterByUserStatusPaginated(status, cursor, size));
     }
 
+    //example
+    //http://localhost:9090/users/filterByStatusCursorFirstName?size=3&direction=desc&cursorFirstName=Normal1&cursorId=42
+    //http://localhost:9090/users/filterByStatusCursorFirstName?size=3&direction=desc
     @GetMapping("/filterByStatusCursorFirstName")
-    public ResponseEntity<CursorPageResponse<UserResponse, String>> filterByStatusCursorFirstName(
+    public ResponseEntity<CursorPageResponse<UserResponse, FirstNameCursor>> filterByStatusCursorFirstName(
             @RequestParam(defaultValue = "ACTIVE") String userStatus,
-            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) String cursorFirstName,
+            @RequestParam(required = false) Long cursorId,
             @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "asc") String direction) {
 
-        log.info("Filtering by status using firstName cursor. status={}, cursor={}, size={}, direction={}",
+        log.info("Filtering by status using firstName and id cursor. status={}, cursorFirstName={}, cursorId={}, size={}, direction={}",
                 userStatus,
-                cursor,
+                cursorFirstName,
+                cursorId,
                 size,
                 direction
         );
         UserStatus status = UserStatus.from(userStatus);
         return ResponseEntity.ok(userService.filterByStatusCursorFirstName(
-                        status,
-                        cursor,
-                        size,
-                        direction
+                status,
+                cursorFirstName,
+                cursorId,
+                size,
+                direction
                 )
         );
     }

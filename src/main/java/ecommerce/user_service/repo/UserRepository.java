@@ -73,6 +73,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
             Pageable pageable
     );
 
+
+    //status = ACTIVE
+    //AND first_name > cursor
+    //ORDER BY first_name ASC
     @Query("""
        SELECT u
        FROM User u
@@ -90,6 +94,26 @@ public interface UserRepository extends JpaRepository<User, Long> {
        SELECT u
        FROM User u
        WHERE u.status = :status
+         AND (
+                u.firstName > :cursorFirstName
+                OR (
+                    u.firstName = :cursorFirstName
+                    AND u.id > :cursorId
+                )
+             )
+       ORDER BY u.firstName ASC, u.id ASC
+       """)
+    List<User> findAfterFirstNameAsc(
+            @Param("status") UserStatus status,
+            @Param("cursorFirstName") String cursorFirstName,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
+
+    @Query("""
+       SELECT u
+       FROM User u
+       WHERE u.status = :status
          AND u.firstName < :cursor
        ORDER BY u.firstName DESC
        """)
@@ -99,12 +123,42 @@ public interface UserRepository extends JpaRepository<User, Long> {
             Pageable pageable
     );
 
+    @Query("""
+       SELECT u
+       FROM User u
+       WHERE u.status = :status
+         AND (
+                u.firstName < :cursorFirstName
+                OR (
+                    u.firstName = :cursorFirstName
+                    AND u.id < :cursorId
+                )
+             )
+       ORDER BY u.firstName DESC, u.id DESC
+       """)
+    List<User> findAfterFirstNameDesc(
+            @Param("status") UserStatus status,
+            @Param("cursorFirstName") String cursorFirstName,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
+
     List<User> findByStatusOrderByFirstNameAsc(
             UserStatus status,
             Pageable pageable
     );
 
     List<User> findByStatusOrderByFirstNameDesc(
+            UserStatus status,
+            Pageable pageable
+    );
+
+    List<User> findByStatusOrderByFirstNameAscIdAsc(
+            UserStatus status,
+            Pageable pageable
+    );
+
+    List<User> findByStatusOrderByFirstNameDescIdDesc(
             UserStatus status,
             Pageable pageable
     );
