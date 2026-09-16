@@ -85,6 +85,14 @@ public class UserController {
         return ResponseEntity.ok(userService.fetchUserById(id));
     }
 
+    @GetMapping("/filterByFirstName")
+    public ResponseEntity<List<UserResponse>> filterByFirstName(
+            @RequestParam String firstName) {
+
+        log.info("Filtering users by firstName={}", firstName);
+        return ResponseEntity.ok(userService.findByFirstName(firstName));
+    }
+
     /**
      * @deprecated Use {@link #fetchAllUsersPaginated(int, int, String, String)}
      * instead. This endpoint does not support pagination or sorting.

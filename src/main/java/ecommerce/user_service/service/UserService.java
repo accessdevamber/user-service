@@ -20,6 +20,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -58,6 +59,22 @@ public class UserService {
         UserResponse response = userMapper.toResponse(user);
         log.info("Fetched user : {}", objectMapper.writeValueAsString(response));
         return response;
+    }
+
+    public List<UserResponse> findByFirstName(String firstName) {
+
+        //List<User> users = userRepository.findByFirstName(firstName);
+        List<UserResponse> userResponseList = userRepository.findByFirstName(firstName)
+                .stream()
+                .filter(Objects::nonNull)
+                .map(userMapper::toResponse)
+                .toList();
+        if (userResponseList.isEmpty()) {
+            log.warn("user not found for firstName {}", firstName);
+            throw new UserNotFoundException(firstName);
+        }
+        log.info("users found with firstName {}", userResponseList);
+        return userResponseList;
     }
 
     public List<UserResponse> fetchAllUsers() {

@@ -22,6 +22,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
             Long id
     );
 
+    List<User> findByFirstName(String firstName);
+
     //SELECT *
     //FROM users
     //WHERE status = 'ACTIVE'
