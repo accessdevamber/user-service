@@ -20,18 +20,34 @@ public class RequestHashService {
         this.objectMapper = objectMapper;
     }
 
-    public String hash(UserRequest request) {
+//    public String hash(UserRequest request) {
+//
+//        try {
+//            String requestJson = objectMapper.writeValueAsString(request);
+//            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+//            byte[] hash = digest.digest(requestJson.getBytes(StandardCharsets.UTF_8));
+//            String requestHash = HexFormat.of().formatHex(hash);
+//            log.info("requestHash = {}", requestHash);
+//            return requestHash;
+//            //return HexFormat.of().formatHex(hash);
+//        } catch (NoSuchAlgorithmException ex) {
+//            log.warn("Inside NoSuchAlgorithmException catch block {}", ex.getMessage());
+//            throw new IllegalStateException("Unable to calculate request hash", ex);
+//        }
+//    }
+
+    public String hash(Object request) {
 
         try {
             String requestJson = objectMapper.writeValueAsString(request);
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(requestJson.getBytes(StandardCharsets.UTF_8));
             String requestHash = HexFormat.of().formatHex(hash);
-            log.info("requestHash = {}", requestHash);
+            log.info("Request hash calculated={}", requestHash);
             return requestHash;
-            //return HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException ex) {
-            log.warn("Inside NoSuchAlgorithmException catch block {}", ex.getMessage());
+            log.warn("NoSuchAlgorithmException catch block. Unable to calculate request hash. reason={}",
+                    ex.getMessage());
             throw new IllegalStateException("Unable to calculate request hash", ex);
         }
     }

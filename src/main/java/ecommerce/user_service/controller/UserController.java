@@ -25,6 +25,11 @@ public class UserController {
     private final UserService userService;
     private final IdempotentUserService idempotentUserService;
 
+    /**
+     * @deprecated Use {@link #createUser(String, UserRequest)} instead.
+     * This endpoint does not support idempotent user creation.
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
     @PostMapping("/createUser")
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
 
@@ -65,6 +70,11 @@ public class UserController {
     }
 
     //bulk same as above
+    /**
+     * @deprecated Use {@link #createBulkUsers(String, BulkUserRequest)} instead.
+     * This endpoint does not support idempotent bulk user creation.
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
     @PostMapping("/createBulkUsers")
     public ResponseEntity<List<UserResponse>> createBulkUsers(@Valid @RequestBody BulkUserRequest request) {
 
@@ -73,6 +83,21 @@ public class UserController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(userResponseList);
+    }
+
+    @PostMapping("/createBulkUsers/V2")
+    public ResponseEntity<List<UserResponse>> createBulkUsers(
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody BulkUserRequest request) {
+
+        log.info("====Creating bulk users. idempotencyKey={}====", idempotencyKey);
+        List<UserResponse> response = idempotentUserService.createBulkUsers(
+                idempotencyKey,
+                request
+        );
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
     //..gives handleMethodArgumentTypeMismatchException for null->valid issue
