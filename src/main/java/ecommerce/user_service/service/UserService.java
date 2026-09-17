@@ -8,6 +8,8 @@ import ecommerce.user_service.exception.UserNotFoundException;
 import ecommerce.user_service.mapper.UserMapper;
 import ecommerce.user_service.repo.UserJdbcRepository;
 import ecommerce.user_service.repo.UserRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -15,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
@@ -32,6 +35,10 @@ public class UserService {
     private final UserMapper userMapper;
     private final ObjectMapper objectMapper;
     private final UserJdbcRepository userJdbcRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
             "id",
             "firstName",
@@ -47,6 +54,17 @@ public class UserService {
             throw new DuplicateEmailException(request.email());
         }
         User savedUser = userRepository.save(userMapper.toEntity(request));
+        entityManager.flush();
+        entityManager.refresh(savedUser);
+        //save()
+        //  → make/persist entity changes
+        //
+        //flush()
+        //  → push pending SQL to DB NOW
+        //
+        //refresh()
+        //  → pull current row values FROM DB
+
         UserResponse response = userMapper.toResponse(savedUser);
         log.info("Saved user : {}", objectMapper.writeValueAsString(response));
         return response;
@@ -171,26 +189,41 @@ public class UserService {
                 throw new DuplicateEmailException(request.email());
             }
         }
-        List<User> userList = userMapper.toEntityList(userRequestList)
-                .stream()
-                .toList();
-        List<UserResponse> userResponseList = userRepository.saveAll(userList)
-                .stream()
-                .map(userMapper::toResponse)
-                .toList();
+//        List<User> userList = userMapper.toEntityList(userRequestList);
+//        List<UserResponse> userResponseList = userRepository.saveAll(userList)
+//                .stream()
+//                .map(userMapper::toResponse)
+//                .toList();
+
+        List<User> userList = userMapper.toEntityList(userRequestList);
+        List<User> savedUsers = userRepository.saveAll(userList);
+        // Force INSERTs to MySQL
+        entityManager.flush();
+        // Reload DB-generated created_at / updated_at
+        savedUsers.forEach(entityManager::refresh);
+
+        List<UserResponse> userResponseList = userMapper.toResponse(savedUsers);
         log.info("Saved users : {}", objectMapper.writeValueAsString(userResponseList));
         return userResponseList;
     }
 
+    @Transactional
     public UserResponse updateUserStatus(Long id, UserStatus status) {
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(id));
         user.setStatus(status);
-        user.setUpdatedAt(LocalDateTime.now());
-        User savedUser = userRepository.save(user);
-        log.info("User status updated. userId={}, status={}", savedUser.getId(), savedUser.getStatus());
-        return userMapper.toResponse(savedUser);
+
+        //this is old implementation
+        //user.setUpdatedAt(LocalDateTime.now());
+        //User savedUser = userRepository.save(user);
+
+        //new implementation
+        entityManager.flush();//push pending SQL to DB NOW
+        entityManager.refresh(user);//pull current row values FROM DB
+
+        log.info("User status updated. userId={}, status={}", user.getId(), user.getStatus());
+        return userMapper.toResponse(user);
     }
 
     public List<UserResponse> filterByUserStatus(UserStatus userStatus) {
@@ -313,6 +346,7 @@ public class UserService {
         }
     }
 
+    @Transactional
     public UserResponse updateUser(
             Long id,
             UpdateUserRequest request) {
@@ -327,9 +361,16 @@ public class UserService {
         user.setLastName(request.lastName());
         user.setPhone(request.phone());
         user.setEmail(request.email());
-        user.setUpdatedAt(LocalDateTime.now());
-        User updatedUser = userRepository.save(user);
-        UserResponse response = userMapper.toResponse(updatedUser);
+
+        //this is old implementation
+        //user.setUpdatedAt(LocalDateTime.now());
+        //User updatedUser = userRepository.save(user);
+
+        //new implementation
+        entityManager.flush();//push pending SQL to DB NOW
+        entityManager.refresh(user);//pull current row values FROM DB
+
+        UserResponse response = userMapper.toResponse(user);
         log.info("User updated successfully for userId = {} -> {}", id, objectMapper.writeValueAsString(response));
         return response;
     }
