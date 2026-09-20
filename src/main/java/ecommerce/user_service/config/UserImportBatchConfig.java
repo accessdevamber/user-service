@@ -4,6 +4,7 @@ import ecommerce.user_service.dto.batch.UserCsvRow;
 import ecommerce.user_service.entity.User;
 import ecommerce.user_service.entity.UserRole;
 import ecommerce.user_service.entity.UserStatus;
+import ecommerce.user_service.exception.InvalidUserImportException;
 import ecommerce.user_service.service.batch.UserImportSkipListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
@@ -49,7 +50,8 @@ public class UserImportBatchConfig {
                 //.resource(new ClassPathResource("batch/users.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users_10_duplicate_email.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users_10_existing_db_email.csv"))//inside src/main/resources
-                .resource(new ClassPathResource("batch/users_10_malformed_record.csv"))//inside src/main/resources
+                //.resource(new ClassPathResource("batch/users_10_malformed_record.csv"))//inside src/main/resources
+                .resource(new ClassPathResource("batch/users_10_processor_validation_failure.csv"))//inside src/main/resources
                 .linesToSkip(1)//The number of lines to skip at the beginning of reading the file.
                 //skips:
                 //
@@ -86,17 +88,24 @@ public class UserImportBatchConfig {
     @Bean
     public ItemProcessor<UserCsvRow, User> userProcessor() {
 
-        return row -> User.builder()
-                .firstName(row.firstName())
-                .lastName(row.lastName())
-                .email(row.email())
-                .phone(row.phone())
-                .passwordHash(row.password())
-                .status(UserStatus.ACTIVE)
-                .role(UserRole.CUSTOMER)
-                .build();
-    }
+        return row -> {
 
+            if (row.email() == null || !row.email().contains("@")) {
+                log.warn("Invalid email: {}", row.email());
+                throw new InvalidUserImportException("Invalid email: " + row.email());
+            }
+
+            return User.builder()
+                    .firstName(row.firstName())
+                    .lastName(row.lastName())
+                    .email(row.email())
+                    .phone(row.phone())
+                    .passwordHash(row.password())
+                    .status(UserStatus.ACTIVE)
+                    .role(UserRole.CUSTOMER)
+                    .build();
+        };
+    }
     // ==============================
     // 3. WRITER
     // ==============================
@@ -304,6 +313,7 @@ public class UserImportBatchConfig {
                 .faultTolerant()
                 .skip(DuplicateKeyException.class)
                 .skip(FlatFileParseException.class)
+                .skip(InvalidUserImportException.class)
                 .skipLimit(10)
 
                 .listener(skipListener)
