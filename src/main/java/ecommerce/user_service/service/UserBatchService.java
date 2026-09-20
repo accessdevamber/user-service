@@ -57,10 +57,9 @@ public class UserBatchService {
                 jobParameters
         );
 
-        log.info("User import job started. executionId={}, status={}",
+        log.info("User import job executionId={}, status={}",
                 jobExecution.getId(),
-                jobExecution.getStatus()
-        );
+                jobExecution.getStatus());
 
         return jobExecution;
     }

@@ -18,6 +18,7 @@ import org.springframework.batch.infrastructure.item.ItemWriter;
 import org.springframework.batch.infrastructure.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.infrastructure.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.infrastructure.item.file.FlatFileItemReader;
+import org.springframework.batch.infrastructure.item.file.FlatFileParseException;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,7 +48,8 @@ public class UserImportBatchConfig {
                 //.resource(new ClassPathResource("batch/users_10_old.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users_10_duplicate_email.csv"))//inside src/main/resources
-                .resource(new ClassPathResource("batch/users_10_existing_db_email.csv"))//inside src/main/resources
+                //.resource(new ClassPathResource("batch/users_10_existing_db_email.csv"))//inside src/main/resources
+                .resource(new ClassPathResource("batch/users_10_malformed_record.csv"))//inside src/main/resources
                 .linesToSkip(1)//The number of lines to skip at the beginning of reading the file.
                 //skips:
                 //
@@ -301,6 +303,7 @@ public class UserImportBatchConfig {
                 // fault tolerance
                 .faultTolerant()
                 .skip(DuplicateKeyException.class)
+                .skip(FlatFileParseException.class)
                 .skipLimit(10)
 
                 .listener(skipListener)
