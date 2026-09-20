@@ -5,6 +5,7 @@ import ecommerce.user_service.entity.User;
 import ecommerce.user_service.entity.UserRole;
 import ecommerce.user_service.entity.UserStatus;
 import ecommerce.user_service.exception.InvalidUserImportException;
+import ecommerce.user_service.exception.TemporaryUserImportException;
 import ecommerce.user_service.service.batch.UserImportSkipListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
@@ -29,6 +30,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @EnableJdbcJobRepository
 @EnableBatchProcessing
@@ -51,7 +53,8 @@ public class UserImportBatchConfig {
                 //.resource(new ClassPathResource("batch/users_10_duplicate_email.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users_10_existing_db_email.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users_10_malformed_record.csv"))//inside src/main/resources
-                .resource(new ClassPathResource("batch/users_10_processor_validation_failure.csv"))//inside src/main/resources
+                //.resource(new ClassPathResource("batch/users_10_processor_validation_failure.csv"))//inside src/main/resources
+                .resource(new ClassPathResource("batch/users_10_transient_exception_retry.csv"))//inside src/main/resources
                 .linesToSkip(1)//The number of lines to skip at the beginning of reading the file.
                 //skips:
                 //
@@ -88,11 +91,31 @@ public class UserImportBatchConfig {
     @Bean
     public ItemProcessor<UserCsvRow, User> userProcessor() {
 
+        AtomicInteger vikramAttempts = new AtomicInteger(0);
         return row -> {
 
+            // Scenario 1: validation failure
             if (row.email() == null || !row.email().contains("@")) {
                 log.warn("Invalid email: {}", row.email());
                 throw new InvalidUserImportException("Invalid email: " + row.email());
+            }
+
+            // Scenario 2: simulated transient failure. succeeds in last attempt/retry attempt
+//            if ("batchretry.vikram05@test.com".equals(row.email())) {
+//
+//                int attempt = vikramAttempts.incrementAndGet();
+//                log.info("Processing Vikram. attempt={}", attempt);
+//                if (attempt <= 2) {
+//                    throw new TemporaryUserImportException("Simulated temporary failure. attempt=" + attempt);
+//                }
+//            }
+
+            // Scenario 2: simulated transient failure. retries exhausted case
+            if ("batchretry.vikram05@test.com".equals(row.email())) {
+
+                int attempt = vikramAttempts.incrementAndGet();
+                log.info("Processing Vikram. attempt={}", attempt);
+                throw new TemporaryUserImportException("Simulated temporary failure. attempt=" + attempt);
             }
 
             return User.builder()
@@ -311,9 +334,15 @@ public class UserImportBatchConfig {
 
                 // fault tolerance
                 .faultTolerant()
+
+                // RETRY
+                .retry(TemporaryUserImportException.class)
+                .retryLimit(3)
+
                 .skip(DuplicateKeyException.class)
                 .skip(FlatFileParseException.class)
                 .skip(InvalidUserImportException.class)
+                .skip(TemporaryUserImportException.class)
                 .skipLimit(10)
 
                 .listener(skipListener)
