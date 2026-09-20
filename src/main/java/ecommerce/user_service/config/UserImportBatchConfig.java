@@ -4,6 +4,7 @@ import ecommerce.user_service.dto.batch.UserCsvRow;
 import ecommerce.user_service.entity.User;
 import ecommerce.user_service.entity.UserRole;
 import ecommerce.user_service.entity.UserStatus;
+import ecommerce.user_service.service.batch.UserImportSkipListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.EnableJdbcJobRepository;
@@ -23,6 +24,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
 
@@ -44,7 +46,8 @@ public class UserImportBatchConfig {
                 .name("userCsvReader")// name of the reader instance
                 //.resource(new ClassPathResource("batch/users_10_old.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users.csv"))//inside src/main/resources
-                .resource(new ClassPathResource("batch/users_10_duplicate_email.csv"))//inside src/main/resources
+                //.resource(new ClassPathResource("batch/users_10_duplicate_email.csv"))//inside src/main/resources
+                .resource(new ClassPathResource("batch/users_10_existing_db_email.csv"))//inside src/main/resources
                 .linesToSkip(1)//The number of lines to skip at the beginning of reading the file.
                 //skips:
                 //
@@ -174,10 +177,12 @@ public class UserImportBatchConfig {
     @Bean
     public Step importUserStep(
             JobRepository jobRepository,
+            PlatformTransactionManager transactionManager,
             FlatFileItemReader<UserCsvRow> userCsvReader,
             ItemProcessor<UserCsvRow, User> userProcessor,
             //JdbcBatchItemWriter<User> userWriter) {
-            ItemWriter<User> userWriter) {
+            ItemWriter<User> userWriter,
+            UserImportSkipListener skipListener) {
 
         //This is where Spring Batch becomes different from your existing endpoint:
         //
@@ -266,7 +271,8 @@ public class UserImportBatchConfig {
         //...
         //
         //We aren't keeping 3 million users around as one giant application operation.
-        return new StepBuilder(
+
+        /*return new StepBuilder(
                 "importUserStep",// the name of the step
                 jobRepository//the job repository to which the job should report to
         )
@@ -282,6 +288,23 @@ public class UserImportBatchConfig {
                 .processor(userProcessor)//an item processor
                 .writer(userWriter)// an item writer
                 //.skip(DuplicateKeyException.class)
+                .build();*/
+
+        log.info("TransactionManager implementation = {}", transactionManager.getClass().getName());
+        return new StepBuilder("importUserStep", jobRepository)
+                .<UserCsvRow, User>chunk(3)
+                .transactionManager(transactionManager)
+                .reader(userCsvReader)
+                .processor(userProcessor)
+                .writer(userWriter)
+
+                // fault tolerance
+                .faultTolerant()
+                .skip(DuplicateKeyException.class)
+                .skipLimit(10)
+
+                .listener(skipListener)
+
                 .build();
     }
 
