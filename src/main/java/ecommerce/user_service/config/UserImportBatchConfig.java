@@ -51,10 +51,10 @@ public class UserImportBatchConfig {
                 //.resource(new ClassPathResource("batch/users_10_old.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users_10_duplicate_email.csv"))//inside src/main/resources
-                //.resource(new ClassPathResource("batch/users_10_existing_db_email.csv"))//inside src/main/resources
+                .resource(new ClassPathResource("batch/users_10_existing_db_email.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users_10_malformed_record.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users_10_processor_validation_failure.csv"))//inside src/main/resources
-                .resource(new ClassPathResource("batch/users_10_transient_exception_retry.csv"))//inside src/main/resources
+                //.resource(new ClassPathResource("batch/users_10_transient_exception_retry.csv"))//inside src/main/resources
                 .linesToSkip(1)//The number of lines to skip at the beginning of reading the file.
                 //skips:
                 //
