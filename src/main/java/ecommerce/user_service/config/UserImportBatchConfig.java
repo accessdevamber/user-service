@@ -25,6 +25,8 @@ import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemRe
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -33,7 +35,7 @@ import javax.sql.DataSource;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @EnableJdbcJobRepository
-@EnableBatchProcessing
+@EnableBatchProcessing(taskExecutorRef = "batchTaskExecutor")
 @Configuration
 @Slf4j
 public class UserImportBatchConfig {
@@ -51,10 +53,11 @@ public class UserImportBatchConfig {
                 //.resource(new ClassPathResource("batch/users_10_old.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users_10_duplicate_email.csv"))//inside src/main/resources
-                .resource(new ClassPathResource("batch/users_10_existing_db_email.csv"))//inside src/main/resources
+                //.resource(new ClassPathResource("batch/users_10_existing_db_email.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users_10_malformed_record.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users_10_processor_validation_failure.csv"))//inside src/main/resources
                 //.resource(new ClassPathResource("batch/users_10_transient_exception_retry.csv"))//inside src/main/resources
+                .resource(new ClassPathResource("batch/users_10_async_test.csv"))//inside src/main/resources
                 .linesToSkip(1)//The number of lines to skip at the beginning of reading the file.
                 //skips:
                 //
@@ -93,6 +96,9 @@ public class UserImportBatchConfig {
 
         AtomicInteger vikramAttempts = new AtomicInteger(0);
         return row -> {
+
+            log.info("Processing email={}, thread={}", row.email(), Thread.currentThread().getName());
+            Thread.sleep(1000); // TEMP async-learning test
 
             // Scenario 1: validation failure
             if (row.email() == null || !row.email().contains("@")) {
@@ -407,10 +413,23 @@ public class UserImportBatchConfig {
     @Bean
     public ItemWriter<User> userWriter(JdbcBatchItemWriter<User> userJdbcWriter) {
 
+//        return chunk -> {
+//            log.info("Writing chunk. size={}", chunk.size());
+//            userJdbcWriter.write(chunk);
+//        };
         return chunk -> {
-            log.info("Writing chunk. size={}", chunk.size());
+
+            log.info("Writing chunk. size={}, thread={}", chunk.size(), Thread.currentThread().getName());
+
             userJdbcWriter.write(chunk);
         };
+    }
+
+    @Bean
+    public TaskExecutor batchTaskExecutor() {
+
+        SimpleAsyncTaskExecutor taskExecutor = new SimpleAsyncTaskExecutor("user-import-");
+        return taskExecutor;
     }
 
 }

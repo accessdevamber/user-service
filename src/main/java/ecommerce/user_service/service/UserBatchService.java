@@ -42,6 +42,8 @@ public class UserBatchService {
         //
         //We'll make the parameters more meaningful later, such as an importId or file name/hash.
         log.info("JobRepository implementation = {}", jobRepository.getClass().getName());
+
+        log.info("JobOperator implementation = {}", jobOperator.getClass().getName());
         JobParameters jobParameters =
                 new JobParametersBuilder()
                         .addLong(
@@ -52,6 +54,7 @@ public class UserBatchService {
 
         log.info("Starting user import batch job");
 
+        log.info("Before starting job. thread={}", Thread.currentThread().getName());
         JobExecution jobExecution = jobOperator.start(
                 importUserJob,
                 jobParameters
