@@ -29,6 +29,7 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
@@ -425,11 +426,26 @@ public class UserImportBatchConfig {
         };
     }
 
+//    @Bean
+//    public TaskExecutor batchTaskExecutor() {
+//
+//        SimpleAsyncTaskExecutor taskExecutor = new SimpleAsyncTaskExecutor("user-import-");
+//        return taskExecutor;
+//    }
+
     @Bean
     public TaskExecutor batchTaskExecutor() {
 
-        SimpleAsyncTaskExecutor taskExecutor = new SimpleAsyncTaskExecutor("user-import-");
-        return taskExecutor;
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(10);
+        executor.setThreadNamePrefix("user-import-");
+
+        executor.initialize();
+
+        return executor;
     }
 
 }
