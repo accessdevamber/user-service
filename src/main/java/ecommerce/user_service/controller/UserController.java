@@ -12,8 +12,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.job.JobExecution;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -113,6 +115,30 @@ public class UserController {
                 execution.getId(),
                 execution.getStatus().name()
         );
+        return ResponseEntity
+                .status(HttpStatus.ACCEPTED)
+                .body(response);
+    }
+
+    @PostMapping(
+            value = "/createBulkUsers/V4",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<UserImportResponse> createBulkUsersV4(
+            @RequestParam("file") MultipartFile file)
+            throws Exception {
+
+        log.info("====Starting bulk user import V4====");
+        log.info("Received import file: {}", file.getOriginalFilename());
+
+        JobExecution execution = userBatchService.importUsersMultipartFile(file);
+
+        UserImportResponse response =
+                new UserImportResponse(
+                        execution.getId(),
+                        execution.getStatus().name()
+                );
+
         return ResponseEntity
                 .status(HttpStatus.ACCEPTED)
                 .body(response);

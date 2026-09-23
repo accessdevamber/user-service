@@ -10,6 +10,7 @@ import ecommerce.user_service.service.batch.UserImportSkipListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.EnableJdbcJobRepository;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
@@ -22,9 +23,11 @@ import org.springframework.batch.infrastructure.item.database.builder.JdbcBatchI
 import org.springframework.batch.infrastructure.item.file.FlatFileItemReader;
 import org.springframework.batch.infrastructure.item.file.FlatFileParseException;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemReaderBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.dao.DuplicateKeyException;
@@ -45,7 +48,7 @@ public class UserImportBatchConfig {
     // 1. READER
     // ==============================
 
-    @Bean
+    /*@Bean
     public FlatFileItemReader<UserCsvRow> userCsvReader() {
 
         //Read records from a flat file and produce UserCsvRow objects.
@@ -75,7 +78,7 @@ public class UserImportBatchConfig {
                 )
                 .targetType(UserCsvRow.class)//The class to map to
                 .build();
-    }
+    }*/
 
     // ==============================
     // 2. PROCESSOR
@@ -432,6 +435,34 @@ public class UserImportBatchConfig {
 //        SimpleAsyncTaskExecutor taskExecutor = new SimpleAsyncTaskExecutor("user-import-");
 //        return taskExecutor;
 //    }
+
+    @Bean
+    @StepScope
+    public FlatFileItemReader<UserCsvRow> userCsvReader(
+            @Value("#{jobParameters['inputFile']}")
+            String inputFile) {
+
+        log.info("Creating CSV reader for file={}, thread={}",
+                inputFile,
+                Thread.currentThread().getName());
+
+        return new FlatFileItemReaderBuilder<UserCsvRow>()
+                .name("userCsvReader")
+                .resource(
+                        new FileSystemResource(inputFile)
+                )
+                .linesToSkip(1)
+                .delimited()
+                .names(
+                        "firstName",
+                        "lastName",
+                        "email",
+                        "phone",
+                        "password"
+                )
+                .targetType(UserCsvRow.class)
+                .build();
+    }
 
     @Bean
     public TaskExecutor batchTaskExecutor() {
