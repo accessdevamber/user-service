@@ -4,9 +4,14 @@ import ecommerce.user_service.dto.batch.UserCsvRow;
 import ecommerce.user_service.entity.User;
 import ecommerce.user_service.entity.UserRole;
 import ecommerce.user_service.entity.UserStatus;
+import ecommerce.user_service.exception.DuplicateEmailInCsvException;
+import ecommerce.user_service.exception.DuplicateEmailInDbException;
 import ecommerce.user_service.exception.InvalidUserImportException;
 import ecommerce.user_service.exception.TemporaryUserImportException;
+import ecommerce.user_service.repo.UserRepository;
 import ecommerce.user_service.service.batch.UserImportSkipListener;
+import ecommerce.user_service.service.batch.UserImportWriteListener;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.EnableJdbcJobRepository;
@@ -30,19 +35,25 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @EnableJdbcJobRepository
 @EnableBatchProcessing(taskExecutorRef = "batchTaskExecutor")
 @Configuration
 @Slf4j
+@RequiredArgsConstructor
 public class UserImportBatchConfig {
+
+    private final UserRepository userRepository;
 
     // ==============================
     // 1. READER
@@ -96,9 +107,12 @@ public class UserImportBatchConfig {
     //<I> – type of input item
     //<O> – type of output item
     @Bean
+    @StepScope
     public ItemProcessor<UserCsvRow, User> userProcessor() {
 
         AtomicInteger vikramAttempts = new AtomicInteger(0);
+
+        Set<String> emailsSeenInCsv = new HashSet<>();
         return row -> {
 
             log.info("Processing email={}, thread={}", row.email(), Thread.currentThread().getName());
@@ -126,6 +140,21 @@ public class UserImportBatchConfig {
                 int attempt = vikramAttempts.incrementAndGet();
                 log.info("Processing Vikram. attempt={}", attempt);
                 throw new TemporaryUserImportException("Simulated temporary failure. attempt=" + attempt);
+            }
+
+            String email = row.email();
+
+            // 1. Duplicate inside THIS CSV
+            if (!emailsSeenInCsv.add(email)) {
+                log.warn("Duplicate email found in CSV: {}, {}", email, Thread.currentThread().getName());
+                throw new DuplicateEmailInCsvException(email);
+            }
+            log.info("emailsSeenInCsv: {}, {}", emailsSeenInCsv, Thread.currentThread().getName());
+
+            // 2. Email already exists in DB
+            if (userRepository.existsByEmail(email)) {
+                log.warn("Email already exists in DB: {}, thread={}", email, Thread.currentThread().getName());
+                throw new DuplicateEmailInDbException(email);
             }
 
             return User.builder()
@@ -226,7 +255,8 @@ public class UserImportBatchConfig {
             ItemProcessor<UserCsvRow, User> userProcessor,
             //JdbcBatchItemWriter<User> userWriter) {
             ItemWriter<User> userWriter,
-            UserImportSkipListener skipListener) {
+            UserImportSkipListener skipListener,
+            UserImportWriteListener writeListener) {
 
         //This is where Spring Batch becomes different from your existing endpoint:
         //
@@ -345,17 +375,27 @@ public class UserImportBatchConfig {
                 // fault tolerance
                 .faultTolerant()
 
-                // RETRY
+//                // RETRY
+//                .retry(TemporaryUserImportException.class)
+//                .retryLimit(3)
+
                 .retry(TemporaryUserImportException.class)
+                .retry(CannotAcquireLockException.class) //transient DB concurrency problem
                 .retryLimit(3)
 
                 .skip(DuplicateKeyException.class)
                 .skip(FlatFileParseException.class)
                 .skip(InvalidUserImportException.class)
                 .skip(TemporaryUserImportException.class)
-                .skipLimit(10)
+
+                //duplicate scenario in csv and db - precheck before hitting db
+                .skip(DuplicateEmailInCsvException.class)
+                .skip(DuplicateEmailInDbException.class)
+
+                .skipLimit(100)
 
                 .listener(skipListener)
+                .listener(writeListener)
 
                 .build();
     }
@@ -469,9 +509,14 @@ public class UserImportBatchConfig {
 
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 
-        executor.setCorePoolSize(2);
-        executor.setMaxPoolSize(4);
-        executor.setQueueCapacity(10);
+//        executor.setCorePoolSize(2);
+//        executor.setMaxPoolSize(4);
+//        executor.setQueueCapacity(10);
+//        executor.setThreadNamePrefix("user-import-");
+
+        executor.setCorePoolSize(10);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(0);
         executor.setThreadNamePrefix("user-import-");
 
         executor.initialize();
