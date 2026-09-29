@@ -1,20 +1,23 @@
 package ecommerce.user_service.controller;
 
 import ecommerce.user_service.dto.*;
+import ecommerce.user_service.dto.batch.UserImportResponse;
 import ecommerce.user_service.entity.UserStatus;
 import ecommerce.user_service.service.IdempotentUserService;
+import ecommerce.user_service.service.UserBatchService;
 import ecommerce.user_service.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
+import org.springframework.batch.core.job.JobExecution;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Locale;
 
 @RestController
 @RequestMapping("/users")
@@ -24,7 +27,13 @@ public class UserController {
 
     private final UserService userService;
     private final IdempotentUserService idempotentUserService;
+    private final UserBatchService userBatchService;
 
+    /**
+     * @deprecated Use {@link #createUser(String, UserRequest)} instead.
+     * This endpoint does not support idempotent user creation.
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
     @PostMapping("/createUser")
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
 
@@ -65,6 +74,12 @@ public class UserController {
     }
 
     //bulk same as above
+
+    /**
+     * @deprecated Use {@link #createBulkUsers(String, BulkUserRequest)} instead.
+     * This endpoint does not support idempotent bulk user creation.
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
     @PostMapping("/createBulkUsers")
     public ResponseEntity<List<UserResponse>> createBulkUsers(@Valid @RequestBody BulkUserRequest request) {
 
@@ -73,6 +88,60 @@ public class UserController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(userResponseList);
+    }
+
+    @PostMapping("/createBulkUsers/V2")
+    public ResponseEntity<List<UserResponse>> createBulkUsers(
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody BulkUserRequest request) {
+
+        log.info("====Creating bulk users. idempotencyKey={}====", idempotencyKey);
+        List<UserResponse> response = idempotentUserService.createBulkUsers(
+                idempotencyKey,
+                request
+        );
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
+    }
+
+    //spring batch using src/main/resources/batch/users_10_old.csv
+    @PostMapping("/createBulkUsers/V3")
+    public ResponseEntity<UserImportResponse> createBulkUsersV3() throws Exception {
+
+        log.info("====Starting bulk user import V3====");
+        JobExecution execution = userBatchService.importUsers();
+        UserImportResponse response = new UserImportResponse(
+                execution.getId(),
+                execution.getStatus().name()
+        );
+        return ResponseEntity
+                .status(HttpStatus.ACCEPTED)
+                .body(response);
+    }
+
+    @PostMapping(
+            value = "/createBulkUsers/V4",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<UserImportResponse> createBulkUsersV4(
+            @RequestParam("file") MultipartFile file)
+            throws Exception {
+
+        log.info("====Starting bulk user import V4====");
+        log.info("Received import file: {}", file.getOriginalFilename());
+
+        JobExecution execution = userBatchService.importUsersMultipartFile(file);
+
+        UserImportResponse response =
+                new UserImportResponse(
+                        execution.getId(),
+                        execution.getStatus().name()
+                );
+
+        return ResponseEntity
+                .status(HttpStatus.ACCEPTED)
+                .body(response);
     }
 
     //..gives handleMethodArgumentTypeMismatchException for null->valid issue
@@ -197,11 +266,11 @@ public class UserController {
         );
         UserStatus status = UserStatus.from(userStatus);
         return ResponseEntity.ok(userService.filterByStatusCursorFirstName(
-                status,
-                cursorFirstName,
-                cursorId,
-                size,
-                direction
+                        status,
+                        cursorFirstName,
+                        cursorId,
+                        size,
+                        direction
                 )
         );
     }

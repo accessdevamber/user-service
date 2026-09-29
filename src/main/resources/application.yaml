@@ -31,6 +31,14 @@ spring:
         #dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true #show formatted sql query on console
 
+  #This doesn't disable Spring Batch.
+  #
+  #It only means:
+  #Don't automatically launch Batch jobs when the application starts.
+  batch:
+    job:
+      enabled: false
+
   flyway:
     enabled: true
     #baseline-on-migrate: true -> not required for our new ecom_user_db, needed for old projects which are adding new flyway

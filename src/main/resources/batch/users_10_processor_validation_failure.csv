@@ -1,0 +1,11 @@
+firstName,lastName,email,phone,password
+Aarav,Sharma,batchprocess.aarav01@test.com,+919850001001,Aarav@123
+Meera,Iyer,batchprocess.meera02@test.com,+919850001002,Meera@123
+Rohan,Verma,batchprocess.rohan03@test.com,+919850001003,Rohan@123
+Ananya,Gupta,batchprocess.ananya04@test.com,+919850001004,Ananya@123
+Vikram,Nair,invalid-email,+919850001005,Vikram@123
+Ishaan,Kapoor,batchprocess.ishaan06@test.com,+919850001006,Ishaan@123
+Kavya,Reddy,batchprocess.kavya07@test.com,+919850001007,Kavya@123
+Arjun,Mehta,batchprocess.arjun08@test.com,+919850001008,Arjun@123
+Nisha,Patel,batchprocess.nisha09@test.com,+919850001009,Nisha@123
+Rahul,Joshi,batchprocess.rahul10@test.com,+919850001010,Rahul@123

@@ -34,3 +34,6 @@ build/
 
 ### environment variable file ###
 .env
+
+# Batch import uploaded files
+uploads/

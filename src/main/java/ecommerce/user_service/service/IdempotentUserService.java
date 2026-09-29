@@ -1,5 +1,6 @@
 package ecommerce.user_service.service;
 
+import ecommerce.user_service.dto.BulkUserRequest;
 import ecommerce.user_service.dto.UserRequest;
 import ecommerce.user_service.dto.UserResponse;
 import ecommerce.user_service.entity.IdempotencyKey;
@@ -8,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -64,6 +66,41 @@ public class IdempotentUserService {
         IdempotencyKey record = idempotencyService.getByKey(idempotencyKey);
         UserResponse response = userService.createUser(request);
         idempotencyService.markCompleted(record, response, HttpStatus.CREATED.value());
+        return response;
+    }
+
+    //for bulk user with idempotency
+    @Transactional
+    public List<UserResponse> createBulkUsers(String idempotencyKey, BulkUserRequest request) {
+
+        // Hash the ENTIRE bulk request
+        String requestHash = requestHashService.hash(request);
+
+        // Atomically try to own this idempotency key
+        int inserted = idempotencyService.tryClaim(
+                idempotencyKey,
+                requestHash
+        );
+
+        // Someone has already used/claimed this key
+        if (inserted == 0) {
+            log.info("Bulk idempotency key already exists. key={}", idempotencyKey);
+            return idempotencyService.getExistingBulkResponse(idempotencyKey, requestHash);
+        }
+
+        // This request successfully claimed the key
+        log.info("Successfully claimed bulk idempotency key. key={}", idempotencyKey);
+        IdempotencyKey record = idempotencyService.getByKey(idempotencyKey);
+
+        // Actual bulk user creation
+        List<UserResponse> response = userService.createMultipleUsers(request.users());
+
+        // Store complete response JSON
+        idempotencyService.markCompleted(
+                record,
+                response,
+                HttpStatus.CREATED.value()
+        );
         return response;
     }
 }

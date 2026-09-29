@@ -2,6 +2,7 @@ package ecommerce.user_service.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.generator.EventType;
 
 import java.time.LocalDateTime;
 
@@ -42,9 +43,21 @@ public class User {
     @Column(nullable = false, length = 20)
     private UserRole role;
 
-    @Column(name = "created_at", nullable = false)
+    //@Generated(event = EventType.INSERT)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            insertable = false,
+            updatable = false
+    )
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    //@Generated(event = {EventType.INSERT, EventType.UPDATE})
+    @Column(
+            name = "updated_at",
+            nullable = false,
+            insertable = false,
+            updatable = false
+    )
     private LocalDateTime updatedAt;
 }

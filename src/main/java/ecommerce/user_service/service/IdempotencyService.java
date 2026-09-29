@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -26,7 +27,7 @@ public class IdempotencyService {
     }
 
     //1st approach for idempotent user creation
-    public Optional<UserResponse> findCompletedResponse(String key, String requestHash) {
+    /*public Optional<UserResponse> findCompletedResponse(String key, String requestHash) {
 
         Optional<IdempotencyKey> existingOptional = repository.findByIdempotencyKey(key);
         if (existingOptional.isEmpty()) {
@@ -53,10 +54,10 @@ public class IdempotencyService {
 //        } catch (JsonProcessingException ex) {
 //            throw new IllegalStateException("Unable to deserialize stored idempotency response", ex);
 //        }
-    }
+    }*/
 
     //1st approach for idempotent user creation
-    public IdempotencyKey createInProgress(String key, String requestHash) {
+    /*public IdempotencyKey createInProgress(String key, String requestHash) {
 
         LocalDateTime now = LocalDateTime.now();
         IdempotencyKey record = IdempotencyKey.builder()
@@ -69,15 +70,31 @@ public class IdempotencyService {
         IdempotencyKey idempotencyKey = repository.save(record);
         log.info("Creating IdempotencyKey with {} status", IdempotencyStatus.IN_PROGRESS);
         return idempotencyKey;
-    }
+    }*/
 
-    public void markCompleted(IdempotencyKey record, UserResponse response, int httpStatus) {
+//    public void markCompleted(IdempotencyKey record, UserResponse response, int httpStatus) {
+//
+//        String responseJson = objectMapper.writeValueAsString(response);
+//        record.setStatus(IdempotencyStatus.COMPLETED);
+//        record.setResponseBody(responseJson);
+//        record.setHttpStatus(httpStatus);
+//        record.setUpdatedAt(LocalDateTime.now());
+//        IdempotencyKey idempotencyKey = repository.save(record);
+//        log.info("IdempotencyKey status changed to {} for idempotencyKey {}",
+//                IdempotencyStatus.COMPLETED,
+//                idempotencyKey.getIdempotencyKey());
+//    }
 
-        String responseJson = objectMapper.writeValueAsString(response);
+    public void markCompleted(
+            IdempotencyKey record,
+            Object response,
+            int httpStatus
+    ) {
+
+        String responseBody = objectMapper.writeValueAsString(response);
         record.setStatus(IdempotencyStatus.COMPLETED);
-        record.setResponseBody(responseJson);
+        record.setResponseBody(responseBody);
         record.setHttpStatus(httpStatus);
-        record.setUpdatedAt(LocalDateTime.now());
         IdempotencyKey idempotencyKey = repository.save(record);
         log.info("IdempotencyKey status changed to {} for idempotencyKey {}",
                 IdempotencyStatus.COMPLETED,
@@ -119,5 +136,40 @@ public class IdempotencyService {
         String responseBody = existing.getResponseBody();
         log.info("Duplicate request. Returning old response {}", responseBody);
         return objectMapper.readValue(responseBody, UserResponse.class);
+    }
+
+    //bulk user method
+    public List<UserResponse> getExistingBulkResponse(
+            String idempotencyKey,
+            String requestHash
+    ) {
+
+        IdempotencyKey existing = repository.findByIdempotencyKey(idempotencyKey)
+                .orElseThrow(() ->
+                        new IllegalStateException("Idempotency record not found after claim collision"));
+
+        // Same key + DIFFERENT bulk request
+        if (!existing.getRequestHash().equals(requestHash)) {
+            log.warn("Bulk idempotency key reused for different request. key={}", idempotencyKey);
+            throw new IdempotencyKeyReusedException(idempotencyKey);
+        }
+
+        // Same key + same request, but original request is processing
+        if (existing.getStatus() == IdempotencyStatus.IN_PROGRESS) {
+            log.warn("Bulk request already in progress. key={}", idempotencyKey);
+            throw new RequestAlreadyInProgressException(idempotencyKey);
+        }
+
+        // Same key + same request + COMPLETED
+        String responseBody = existing.getResponseBody();
+        log.info("Duplicate bulk request. Returning stored response. key={}", idempotencyKey);
+        return objectMapper.readValue(
+                responseBody,
+                objectMapper.getTypeFactory()
+                        .constructCollectionType(
+                                List.class,
+                                UserResponse.class
+                        )
+        );
     }
 }
