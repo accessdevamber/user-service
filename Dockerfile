@@ -27,6 +27,8 @@ COPY src ./src
 
 # Compile + package application
 RUN mvn -e -B clean package -DskipTests
+#-B means Maven batch/non-interactive mode, useful in CI/build environments.
+#-e asks Maven to show error stack traces.
 
 
 # ================================
