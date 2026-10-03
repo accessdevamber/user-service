@@ -6,6 +6,10 @@ import ecommerce.user_service.entity.UserStatus;
 import ecommerce.user_service.service.IdempotentUserService;
 import ecommerce.user_service.service.UserBatchService;
 import ecommerce.user_service.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
@@ -23,17 +27,27 @@ import java.util.List;
 @RequestMapping("/users")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(
+        name = "User APIs",
+        description = "APIs for creating and managing users"
+)
 public class UserController {
 
     private final UserService userService;
     private final IdempotentUserService idempotentUserService;
     private final UserBatchService userBatchService;
 
+
     /**
      * @deprecated Use {@link #createUser(String, UserRequest)} instead.
      * This endpoint does not support idempotent user creation.
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @Operation(
+            summary = "Create user (Deprecated)",
+            description = "Creates a user without idempotency support. Use /createUser/V2 instead.",
+            deprecated = true
+    )
     @PostMapping("/createUser")
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
 
@@ -44,8 +58,22 @@ public class UserController {
                 .body(response);
     }
 
+
+    @Operation(
+            summary = "Create user",
+            description = "Creates a user with idempotency support using the Idempotency-Key request header."
+    )
+    @ApiResponse(
+            responseCode = "201",
+            description = "User created successfully"
+    )
     @PostMapping("/createUser/V2")
     public ResponseEntity<UserResponse> createUser(
+            @Parameter(
+                    description = "Unique key used to prevent duplicate user creation when the same request is retried",
+                    example = "kishan-001",
+                    required = true
+            )
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody UserRequest request) {
 
@@ -55,6 +83,7 @@ public class UserController {
                 .status(HttpStatus.CREATED)
                 .body(response);
     }
+
 
     /**
      * @deprecated Use {@link #createBulkUsers(BulkUserRequest)} instead.
