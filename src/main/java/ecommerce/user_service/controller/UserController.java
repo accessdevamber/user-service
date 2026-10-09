@@ -3,9 +3,14 @@ package ecommerce.user_service.controller;
 import ecommerce.user_service.dto.*;
 import ecommerce.user_service.dto.batch.UserImportResponse;
 import ecommerce.user_service.entity.UserStatus;
+import ecommerce.user_service.exception.ErrorResponse;
 import ecommerce.user_service.service.IdempotentUserService;
 import ecommerce.user_service.service.UserBatchService;
 import ecommerce.user_service.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
@@ -23,19 +28,31 @@ import java.util.List;
 @RequestMapping("/users")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(
+        name = "User APIs",
+        description = "APIs for creating and managing users"
+)
 public class UserController {
 
     private final UserService userService;
     private final IdempotentUserService idempotentUserService;
     private final UserBatchService userBatchService;
 
+
     /**
      * @deprecated Use {@link #createUser(String, UserRequest)} instead.
      * This endpoint does not support idempotent user creation.
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @Operation(
+            summary = "Create user (Deprecated)",
+            description = "Creates a user without idempotency support. Use /createUser/V2 instead.",
+            deprecated = true
+    )
     @PostMapping("/createUser")
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
+
+        //int x = 2_000_000_000;//allowed _ for visibility in java. no error here
 
         log.info("====Creating user====");
         UserResponse response = userService.createUser(request);
@@ -44,8 +61,22 @@ public class UserController {
                 .body(response);
     }
 
+
+    @Operation(
+            summary = "Create user",
+            description = "Creates a user with idempotency support using the Idempotency-Key request header."
+    )
+    @ApiResponse(
+            responseCode = "201",
+            description = "User created successfully"
+    )
     @PostMapping("/createUser/V2")
     public ResponseEntity<UserResponse> createUser(
+            @Parameter(
+                    description = "Unique key used to prevent duplicate user creation when the same request is retried",
+                    example = "kishan-001",
+                    required = true
+            )
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody UserRequest request) {
 
@@ -56,11 +87,21 @@ public class UserController {
                 .body(response);
     }
 
+
     /**
      * @deprecated Use {@link #createBulkUsers(BulkUserRequest)} instead.
      * BulkUserRequest provides cleaner request validation.
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @Operation(
+            summary = "Create multiple users (Deprecated)",
+            description = "Creates multiple users from a list. Use /createBulkUsers instead.",
+            deprecated = true
+    )
+    @ApiResponse(
+            responseCode = "201",
+            description = "Users created successfully"
+    )
     @PostMapping("/createMultipleUsers")
     public ResponseEntity<List<UserResponse>> createMultipleUsers(
             @NotEmpty(message = "User list must not be empty")
@@ -73,13 +114,22 @@ public class UserController {
                 .body(userResponseList);
     }
 
-    //bulk same as above
 
+    //bulk same as above
     /**
      * @deprecated Use {@link #createBulkUsers(String, BulkUserRequest)} instead.
      * This endpoint does not support idempotent bulk user creation.
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @Operation(
+            summary = "Create bulk users (Deprecated)",
+            description = "Creates multiple users without idempotency support. Use /createBulkUsers/V2 instead.",
+            deprecated = true
+    )
+    @ApiResponse(
+            responseCode = "201",
+            description = "Users created successfully"
+    )
     @PostMapping("/createBulkUsers")
     public ResponseEntity<List<UserResponse>> createBulkUsers(@Valid @RequestBody BulkUserRequest request) {
 
@@ -90,8 +140,22 @@ public class UserController {
                 .body(userResponseList);
     }
 
+
+    @Operation(
+            summary = "Create bulk users",
+            description = "Creates multiple users with idempotency support using the Idempotency-Key request header."
+    )
+    @ApiResponse(
+            responseCode = "201",
+            description = "Users created successfully"
+    )
     @PostMapping("/createBulkUsers/V2")
     public ResponseEntity<List<UserResponse>> createBulkUsers(
+            @Parameter(
+                    description = "Unique idempotency key used to prevent duplicate bulk user creation",
+                    example = "bulk-users-001",
+                    required = true
+            )
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody BulkUserRequest request) {
 
@@ -105,7 +169,16 @@ public class UserController {
                 .body(response);
     }
 
+
     //spring batch using src/main/resources/batch/users_10_old.csv
+    @Operation(
+            summary = "Start bulk user import V3",
+            description = "Starts a Spring Batch job to import users from the predefined CSV file."
+    )
+    @ApiResponse(
+            responseCode = "202",
+            description = "User import job accepted and started"
+    )
     @PostMapping("/createBulkUsers/V3")
     public ResponseEntity<UserImportResponse> createBulkUsersV3() throws Exception {
 
@@ -120,6 +193,15 @@ public class UserController {
                 .body(response);
     }
 
+
+    @Operation(
+            summary = "Import users from CSV",
+            description = "Uploads a CSV file and starts an asynchronous Spring Batch job to import users."
+    )
+    @ApiResponse(
+            responseCode = "202",
+            description = "CSV file accepted and user import job started"
+    )
     @PostMapping(
             value = "/createBulkUsers/V4",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
@@ -144,29 +226,67 @@ public class UserController {
                 .body(response);
     }
 
+
     //..gives handleMethodArgumentTypeMismatchException for null->valid issue
     // id is taken as string first and then converted to long but "null" cannot become Long. So valid observation but not error
     //no change needed
+    @Operation(
+            summary = "Fetch user by ID",
+            description = "Fetches a user using the user's unique ID."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "User fetched successfully"
+    )
     @GetMapping("/fetchById/{id}")
-    public ResponseEntity<UserResponse> fetchUserById(@PathVariable Long id) {
+    public ResponseEntity<UserResponse> fetchUserById(
+            @Parameter(
+                    description = "Unique ID of the user",
+                    example = "34482",
+                    required = true
+            )
+            @PathVariable Long id) {
 
         log.info("====Fetching userById====");
         return ResponseEntity.ok(userService.fetchUserById(id));
     }
 
+    @Operation(
+            summary = "Filter users by first name",
+            description = "Returns users whose first name matches the provided first name."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Users fetched successfully"
+    )
     @GetMapping("/filterByFirstName")
     public ResponseEntity<List<UserResponse>> filterByFirstName(
+            @Parameter(
+                    description = "First name used to filter users",
+                    example = "Kishan",
+                    required = true
+            )
             @RequestParam String firstName) {
 
         log.info("Filtering users by firstName={}", firstName);
         return ResponseEntity.ok(userService.findByFirstName(firstName));
     }
 
+
     /**
      * @deprecated Use {@link #fetchAllUsersPaginated(int, int, String, String)}
      * instead. This endpoint does not support pagination or sorting.
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @Operation(
+            summary = "Fetch all users (Deprecated)",
+            description = "Fetches all users without pagination or sorting. Use /fetchAllUsers/V2 instead.",
+            deprecated = true
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Users fetched successfully"
+    )
     @GetMapping("/fetchAllUsers")
     public ResponseEntity<List<UserResponse>> fetchAllUsers() {
 
@@ -174,12 +294,37 @@ public class UserController {
         return ResponseEntity.ok(userService.fetchAllUsers());
     }
 
+
+    @Operation(
+            summary = "Fetch users with pagination and sorting",
+            description = "Fetches users page by page with configurable page size, sorting field, and sort direction."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Users fetched successfully"
+    )
     //fetch all users with pagination
     @GetMapping("/fetchAllUsers/V2")
     public ResponseEntity<PageResponse<UserResponse>> fetchAllUsersPaginated(
+            @Parameter(
+                    description = "Page number to retrieve. Page numbering starts from 0.",
+                    example = "0"
+            )
             @RequestParam(defaultValue = "0", required = false) int page,
+            @Parameter(
+                    description = "Number of users to return per page.",
+                    example = "5"
+            )
             @RequestParam(defaultValue = "5", required = false) int size,
+            @Parameter(
+                    description = "User field used for sorting.",
+                    example = "id"
+            )
             @RequestParam(defaultValue = "id", required = false) String sortBy,
+            @Parameter(
+                    description = "Sort direction. Use asc for ascending or desc for descending.",
+                    example = "asc"
+            )
             @RequestParam(defaultValue = "asc", required = false) String direction
     ) {
 
@@ -206,8 +351,21 @@ public class UserController {
      * This endpoint does not support pagination or sorting.
      */
     @Deprecated(since = "2.0", forRemoval = true)
+    @Operation(
+            summary = "Filter users by status (Deprecated)",
+            description = "Filters users by status without pagination. Use /filterByUserStatus/V2 instead.",
+            deprecated = true
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Users filtered successfully"
+    )
     @GetMapping("/filterByUserStatus")
     public ResponseEntity<List<UserResponse>> filterByStatus(
+            @Parameter(
+                    description = "User status used for filtering",
+                    example = "ACTIVE"
+            )
             @RequestParam(defaultValue = "ACTIVE") String userStatus) {
 
         log.info("====Filtering by user status====");
@@ -235,10 +393,31 @@ public class UserController {
     //
     //cursor tells the database where to continue from
     //size tells the database how many records to return
+
+    @Operation(
+            summary = "Filter users by status with cursor pagination",
+            description = "Filters users by status using cursor-based pagination."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Users filtered successfully"
+    )
     @GetMapping("/filterByUserStatus/V2")
     public ResponseEntity<CursorPageResponse<UserResponse, Long>> filterByStatusPaginated(
+            @Parameter(
+                    description = "User status used for filtering",
+                    example = "ACTIVE"
+            )
             @RequestParam(defaultValue = "ACTIVE", required = false) String userStatus,
+            @Parameter(
+                    description = "ID of the last user from the previous result. Results continue after this ID.",
+                    example = "10"
+            )
             @RequestParam(required = false) Long cursor,
+            @Parameter(
+                    description = "Maximum number of users to return",
+                    example = "3"
+            )
             @RequestParam(defaultValue = "5", required = false) int size) {
 
         log.info("====Filtering by user status paginated====");
@@ -246,15 +425,44 @@ public class UserController {
         return ResponseEntity.ok(userService.filterByUserStatusPaginated(status, cursor, size));
     }
 
+
     //example
     //http://localhost:9090/users/filterByStatusCursorFirstName?size=3&direction=desc&cursorFirstName=Normal1&cursorId=42
     //http://localhost:9090/users/filterByStatusCursorFirstName?size=3&direction=desc
+    @Operation(
+            summary = "Filter users by status using first name cursor",
+            description = "Filters users by status using cursor-based pagination ordered by firstName and id."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Users filtered successfully"
+    )
     @GetMapping("/filterByStatusCursorFirstName")
     public ResponseEntity<CursorPageResponse<UserResponse, FirstNameCursor>> filterByStatusCursorFirstName(
+            @Parameter(
+                    description = "User status used for filtering",
+                    example = "ACTIVE"
+            )
             @RequestParam(defaultValue = "ACTIVE") String userStatus,
+            @Parameter(
+                    description = "First name from the last user of the previous result",
+                    example = "Kishan"
+            )
             @RequestParam(required = false) String cursorFirstName,
+            @Parameter(
+                    description = "User ID from the last user of the previous result",
+                    example = "17"
+            )
             @RequestParam(required = false) Long cursorId,
+            @Parameter(
+                    description = "Maximum number of users to return",
+                    example = "5"
+            )
             @RequestParam(defaultValue = "5") int size,
+            @Parameter(
+                    description = "Sort direction. Use asc for ascending or desc for descending.",
+                    example = "asc"
+            )
             @RequestParam(defaultValue = "asc") String direction) {
 
         log.info("Filtering by status using firstName and id cursor. status={}, cursorFirstName={}, cursorId={}, size={}, direction={}",
@@ -431,8 +639,20 @@ public class UserController {
     //
     //{"status": "inactive"}
     //→ 200 OK
+    @Operation(
+            summary = "Update user status",
+            description = "Updates the status of an existing user."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "User status updated successfully"
+    )
     @PatchMapping("/{id}/status")
     public ResponseEntity<UserResponse> updateUserStatus(
+            @Parameter(
+                    description = "ID of the user whose status will be updated",
+                    example = "17"
+            )
             @PathVariable Long id,
             @Valid @RequestBody UserStatusRequest request) {
 
@@ -447,18 +667,45 @@ public class UserController {
 //        return ResponseEntity.ok(userService.deleteById(id));
 //    }
 
+
     //standard way using 204 no content
+    @Operation(
+            summary = "Delete user by ID",
+            description = "Deletes an existing user using the user ID."
+    )
+    @ApiResponse(
+            responseCode = "204",
+            description = "User deleted successfully"
+    )
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteById(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteById(
+            @Parameter(
+                    description = "ID of the user to delete",
+                    example = "17"
+            )
+            @PathVariable Long id) {
 
         log.info("====deleteById====");
         userService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
+
     //valid only for firstName,lastName,email and phone
+    @Operation(
+            summary = "Update user",
+            description = "Updates an existing user's details using the user ID."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "User updated successfully"
+    )
     @PutMapping("/{id}")
     public ResponseEntity<UserResponse> updateUser(
+            @Parameter(
+                    description = "ID of the user to update",
+                    example = "17"
+            )
             @PathVariable Long id,
             @Valid @RequestBody UpdateUserRequest request) {
 
@@ -466,8 +713,17 @@ public class UserController {
         return ResponseEntity.ok(userService.updateUser(id, request));
     }
 
+
+    @Operation(
+            summary = "Test generic error handling",
+            description = "Test endpoint that deliberately throws an exception to verify the generic exception handler."
+    )
+    @ApiResponse(
+            responseCode = "500",
+            description = "Generic internal server error"
+    )
     @GetMapping("/test-generic-error")
-    public ResponseEntity<String> testGenericError() {
+    public ResponseEntity<ErrorResponse> testGenericError() {
 
         log.info("====inside testGenericError====");
         throw new IllegalStateException("Testing generic exception handler");
