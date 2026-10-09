@@ -52,6 +52,8 @@ public class UserController {
     @PostMapping("/createUser")
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
 
+        //int x = 2_000_000_000;//allowed _ for visibility in java. no error here
+
         log.info("====Creating user====");
         UserResponse response = userService.createUser(request);
         return ResponseEntity
