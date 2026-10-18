@@ -8,28 +8,53 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, Long> {
+//public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, Long> {
+public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, UUID> {
 
     Optional<IdempotencyKey> findByIdempotencyKey(String idempotencyKey);
 
+//    @Modifying
+//    @Query(value = """
+//            INSERT IGNORE INTO idempotency_keys
+//                (idempotency_key,
+//                 request_hash,
+//                 status,
+//                 created_at,
+//                 updated_at)
+//            VALUES
+//                (:idempotencyKey,
+//                 :requestHash,
+//                 'IN_PROGRESS',
+//                 CURRENT_TIMESTAMP,
+//                 CURRENT_TIMESTAMP)
+//            """, nativeQuery = true)
+//    int tryClaim(
+//            @Param("idempotencyKey") String idempotencyKey,
+//            @Param("requestHash") String requestHash
+//    );
+
     @Modifying
     @Query(value = """
-            INSERT IGNORE INTO idempotency_keys
-                (idempotency_key,
-                 request_hash,
-                 status,
-                 created_at,
-                 updated_at)
-            VALUES
-                (:idempotencyKey,
-                 :requestHash,
-                 'IN_PROGRESS',
-                 CURRENT_TIMESTAMP,
-                 CURRENT_TIMESTAMP)
-            """, nativeQuery = true)
+        INSERT IGNORE INTO idempotency_keys
+            (id,
+             idempotency_key,
+             request_hash,
+             status,
+             created_at,
+             updated_at)
+        VALUES
+            (UUID_TO_BIN(:id),
+             :idempotencyKey,
+             :requestHash,
+             'IN_PROGRESS',
+             CURRENT_TIMESTAMP,
+             CURRENT_TIMESTAMP)
+        """, nativeQuery = true)
     int tryClaim(
+            @Param("id") String id,
             @Param("idempotencyKey") String idempotencyKey,
             @Param("requestHash") String requestHash
     );

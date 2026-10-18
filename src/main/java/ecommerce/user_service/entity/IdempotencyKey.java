@@ -1,9 +1,12 @@
 package ecommerce.user_service.entity;
 
+import ecommerce.user_service.utility.UuidV7Generator;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(
@@ -20,11 +23,16 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Slf4j
 public class IdempotencyKey {
 
+//    @Id
+//    @GeneratedValue(strategy = GenerationType.IDENTITY)
+//    private Long id;
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", columnDefinition = "BINARY(16)", nullable = false)
+    private UUID id;
 
     @Column(name = "idempotency_key", nullable = false, length = 100)
     private String idempotencyKey;
@@ -47,4 +55,12 @@ public class IdempotencyKey {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @PrePersist
+    public void onCreate() {
+        if (id == null) {
+            id = UuidV7Generator.generate();
+        }
+        log.info("uuid generated : {}", id);
+    }
 }

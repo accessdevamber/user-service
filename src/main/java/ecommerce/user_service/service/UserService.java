@@ -18,13 +18,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -48,12 +46,18 @@ public class UserService {
             "updatedAt"
     );
 
+    @Transactional
     public UserResponse createUser(UserRequest request) {
+
+        log.info("Transaction active BEFORE save: {}", TransactionSynchronizationManager.isActualTransactionActive());
 
         if (userRepository.existsByEmail(request.email())) {
             throw new DuplicateEmailException(request.email());
         }
         User savedUser = userRepository.save(userMapper.toEntity(request));
+
+        log.info("Transaction active AFTER save: {}", TransactionSynchronizationManager.isActualTransactionActive());
+
         entityManager.flush();
         entityManager.refresh(savedUser);
         //save()
@@ -70,7 +74,8 @@ public class UserService {
         return response;
     }
 
-    public UserResponse fetchUserById(Long id) {
+    //public UserResponse fetchUserById(Long id) {
+    public UserResponse fetchUserById(UUID id) {
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(id));
@@ -132,6 +137,23 @@ public class UserService {
         Sort sort = direction.equalsIgnoreCase("desc")
                 ? Sort.by(sortBy).descending()
                 : Sort.by(sortBy).ascending();
+
+        //to break the deadlock if two records have same field which we are sorting by
+        //example : sort by firstName where "arun" repeats so we need id to break the tiebreaker as to which one
+        //should come first according to the sort direction
+
+        //This means:
+        //Request	                            Actual sorting
+        //sortBy=id&direction=asc	            id ASC
+        //sortBy=firstName&direction=asc	    firstName ASC, id ASC
+        //sortBy=firstName&direction=desc	    firstName DESC, id DESC
+        //sortBy=createdAt&direction=desc	    createdAt DESC, id DESC
+        if (!"id".equals(sortBy)) {
+            //sort = sort.and(Sort.by(direction, "id"));
+            sort = sort.and(Sort.by(Sort.Direction.fromString(direction), "id"));
+        }
+
+
         //Pageable pageable = PageRequest.of(page, size);
         Pageable pageable = PageRequest.of(page, size, sort);
         Page<User> users = userRepository.findAll(pageable);
@@ -208,7 +230,8 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse updateUserStatus(Long id, UserStatus status) {
+    //public UserResponse updateUserStatus(Long id, UserStatus status) {
+    public UserResponse updateUserStatus(UUID id, UserStatus status) {
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(id));
@@ -237,9 +260,10 @@ public class UserService {
         return usersByStatus;
     }
 
-    public CursorPageResponse<UserResponse, Long> filterByUserStatusPaginated(
+    public CursorPageResponse<UserResponse, UUID> filterByUserStatusPaginated(
             UserStatus userStatus,
-            Long cursor,
+            //Long cursor,
+            UUID cursor,
             int size) {
 
         if (size <= 0) {
@@ -250,9 +274,10 @@ public class UserService {
             throw new IllegalArgumentException("Size cannot be greater than 100");
         }
 
-        if (cursor != null && cursor < 0) {
-            throw new IllegalArgumentException("Cursor cannot be negative");
-        }
+        //cursor when Long in old PK case, it was valid, invalid for UUID
+//        if (cursor != null && cursor < 0) {
+//            throw new IllegalArgumentException("Cursor cannot be negative");
+//        }
 
         // Ask DB for ONE extra record
         Pageable pageable = PageRequest.of(0, size + 1);
@@ -265,32 +290,37 @@ public class UserService {
                     pageable);
         } else {
             log.info("cursor value is {}", cursor);
-//            users = userRepository.findByStatusAndIdGreaterThanOrderByIdAsc(
-//                    userStatus,
-//                    cursor,
-//                    pageable
-//            );
+
+            //working
+            users = userRepository.findByStatusAndIdGreaterThanOrderByIdAsc(
+                    userStatus,
+                    cursor,
+                    pageable
+            );
 
             //JPQL
+            //working
 //            users = userRepository.findUsersAfterCursor(
 //                    userStatus,
 //                    cursor,
 //                    pageable
 //            );
 
+            //working
             //native query using jpa
 //            users = userRepository.findUsersAfterCursorNative(
 //                    userStatus.name(),
-//                    cursor,
+//                    cursor.toString(),
 //                    size + 1
 //            );
 
             //jdbcTemplate way
-            users = userJdbcRepository.findUsersAfterCursor(
-                    userStatus,
-                    cursor,
-                    size + 1
-                    );
+            //working
+//            users = userJdbcRepository.findUsersAfterCursor(
+//                    userStatus,
+//                    cursor,
+//                    size + 1
+//                    );
         }
         // If we received more than requested size,
         // another batch exists.
@@ -308,7 +338,8 @@ public class UserService {
                 // The returned list supports all of the optional list operations supported by this list.
                 ? users.subList(0, size)//size is exclusive so last record gets removed
                 : users;
-        Long nextCursor = null;
+        //Long nextCursor = null;
+        UUID nextCursor = null;
         //Remove the extra record before returning response.
         //List<User> usersToReturn;
         if (hasNext && !usersToReturn.isEmpty()) {
@@ -336,7 +367,17 @@ public class UserService {
         );
     }
 
-    public void deleteById(Long id) {
+//    public void deleteById(Long id) {
+//        if (userRepository.existsById(id)) {
+//            userRepository.deleteById(id);
+//            log.info("deleted user with id {}", id);
+//        } else {
+//            log.warn("user with id {} doesn't exist", id);
+//            throw new UserNotFoundException(id);
+//        }
+//    }
+
+    public void deleteById(UUID id) {
         if (userRepository.existsById(id)) {
             userRepository.deleteById(id);
             log.info("deleted user with id {}", id);
@@ -348,7 +389,8 @@ public class UserService {
 
     @Transactional
     public UserResponse updateUser(
-            Long id,
+            //Long id,
+            UUID id,
             UpdateUserRequest request) {
 
         User user = userRepository.findById(id)
@@ -459,7 +501,8 @@ public class UserService {
     public CursorPageResponse<UserResponse, FirstNameCursor> filterByStatusCursorFirstName(
             UserStatus status,
             String cursorFirstName,
-            Long cursorId,
+            //Long cursorId,
+            UUID cursorId,
             int size,
             String direction) {
 

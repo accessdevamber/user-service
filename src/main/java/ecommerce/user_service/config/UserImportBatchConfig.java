@@ -11,6 +11,7 @@ import ecommerce.user_service.exception.TemporaryUserImportException;
 import ecommerce.user_service.repo.UserRepository;
 import ecommerce.user_service.service.batch.UserImportSkipListener;
 import ecommerce.user_service.service.batch.UserImportWriteListener;
+import ecommerce.user_service.utility.UuidV7Generator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
@@ -118,6 +119,11 @@ public class UserImportBatchConfig {
             log.info("Processing email={}, thread={}", row.email(), Thread.currentThread().getName());
             Thread.sleep(1000); // TEMP async-learning test
 
+            if (row.firstName() == null || row.firstName().isBlank()) {
+                log.warn("Invalid firstName. Empty or Null value passed : {}", row.firstName());
+                throw new InvalidUserImportException("First name cannot be blank");
+            }
+
             // Scenario 1: validation failure
             if (row.email() == null || !row.email().contains("@")) {
                 log.warn("Invalid email: {}", row.email());
@@ -158,6 +164,7 @@ public class UserImportBatchConfig {
             }
 
             return User.builder()
+                    .id(UuidV7Generator.generate())
                     .firstName(row.firstName())
                     .lastName(row.lastName())
                     .email(row.email())
@@ -194,12 +201,35 @@ public class UserImportBatchConfig {
         //
         //:firstName
 
-        //this dbcBatchItemWriter actually writes to DB
+        //this jdbcBatchItemWriter actually writes to DB
         return new JdbcBatchItemWriterBuilder<User>()
                 .dataSource(dataSource)
+//                .sql("""
+//                        INSERT INTO users
+//                        (
+//                            first_name,
+//                            last_name,
+//                            email,
+//                            phone,
+//                            password_hash,
+//                            status,
+//                            role
+//                        )
+//                        VALUES
+//                        (
+//                            :firstName,
+//                            :lastName,
+//                            :email,
+//                            :phone,
+//                            :passwordHash,
+//                            :status,
+//                            :role
+//                        )
+//                        """)
                 .sql("""
                         INSERT INTO users
                         (
+                            id,
                             first_name,
                             last_name,
                             email,
@@ -210,6 +240,7 @@ public class UserImportBatchConfig {
                         )
                         VALUES
                         (
+                            UUID_TO_BIN(:id),
                             :firstName,
                             :lastName,
                             :email,
@@ -229,6 +260,7 @@ public class UserImportBatchConfig {
 
                             //log.info("user values : {}", user);
                             MapSqlParameterSource params = new MapSqlParameterSource();
+                            params.addValue("id", user.getId().toString());
                             params.addValue("firstName", user.getFirstName());
                             params.addValue("lastName", user.getLastName());
                             params.addValue("email", user.getEmail());

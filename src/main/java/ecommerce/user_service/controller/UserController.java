@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/users")
@@ -37,7 +38,6 @@ public class UserController {
     private final UserService userService;
     private final IdempotentUserService idempotentUserService;
     private final UserBatchService userBatchService;
-
 
     /**
      * @deprecated Use {@link #createUser(String, UserRequest)} instead.
@@ -171,9 +171,12 @@ public class UserController {
 
 
     //spring batch using src/main/resources/batch/users_10_old.csv
+    @Deprecated(since = "4.0", forRemoval = true)
     @Operation(
             summary = "Start bulk user import V3",
-            description = "Starts a Spring Batch job to import users from the predefined CSV file."
+            description = "Starts a Spring Batch job to import users from the predefined CSV file. " +
+                    "Legacy CSV import. Use /createBulkUsers/V4 instead.",
+            deprecated = true
     )
     @ApiResponse(
             responseCode = "202",
@@ -242,10 +245,12 @@ public class UserController {
     public ResponseEntity<UserResponse> fetchUserById(
             @Parameter(
                     description = "Unique ID of the user",
-                    example = "34482",
+                    //example = "34482",
+                    example = "01a1344b-f1f5-7c39-9550-53b97df5cc51",
                     required = true
             )
-            @PathVariable Long id) {
+            @PathVariable UUID id) {
+            //@PathVariable Long id) {
 
         log.info("====Fetching userById====");
         return ResponseEntity.ok(userService.fetchUserById(id));
@@ -311,16 +316,19 @@ public class UserController {
                     example = "0"
             )
             @RequestParam(defaultValue = "0", required = false) int page,
+
             @Parameter(
                     description = "Number of users to return per page.",
                     example = "5"
             )
             @RequestParam(defaultValue = "5", required = false) int size,
+
             @Parameter(
                     description = "User field used for sorting.",
                     example = "id"
             )
             @RequestParam(defaultValue = "id", required = false) String sortBy,
+
             @Parameter(
                     description = "Sort direction. Use asc for ascending or desc for descending.",
                     example = "asc"
@@ -347,7 +355,7 @@ public class UserController {
 
 
     /**
-     * @deprecated Use {@link #filterByStatusPaginated(String, Long, int)} instead.
+     * @deprecated Use {@link #filterByStatusPaginated(String, UUID, int)} instead.
      * This endpoint does not support pagination or sorting.
      */
     @Deprecated(since = "2.0", forRemoval = true)
@@ -403,7 +411,7 @@ public class UserController {
             description = "Users filtered successfully"
     )
     @GetMapping("/filterByUserStatus/V2")
-    public ResponseEntity<CursorPageResponse<UserResponse, Long>> filterByStatusPaginated(
+    public ResponseEntity<CursorPageResponse<UserResponse, UUID>> filterByStatusPaginated(
             @Parameter(
                     description = "User status used for filtering",
                     example = "ACTIVE"
@@ -413,7 +421,8 @@ public class UserController {
                     description = "ID of the last user from the previous result. Results continue after this ID.",
                     example = "10"
             )
-            @RequestParam(required = false) Long cursor,
+            //@RequestParam(required = false) Long cursor,
+            @RequestParam(required = false) UUID cursor,
             @Parameter(
                     description = "Maximum number of users to return",
                     example = "3"
@@ -422,6 +431,7 @@ public class UserController {
 
         log.info("====Filtering by user status paginated====");
         UserStatus status = UserStatus.from(userStatus);
+        //return ResponseEntity.ok(userService.filterByUserStatusPaginated(status, cursor, size));
         return ResponseEntity.ok(userService.filterByUserStatusPaginated(status, cursor, size));
     }
 
@@ -453,7 +463,8 @@ public class UserController {
                     description = "User ID from the last user of the previous result",
                     example = "17"
             )
-            @RequestParam(required = false) Long cursorId,
+            //@RequestParam(required = false) Long cursorId,
+            @RequestParam(required = false) UUID cursorId,
             @Parameter(
                     description = "Maximum number of users to return",
                     example = "5"
@@ -651,9 +662,10 @@ public class UserController {
     public ResponseEntity<UserResponse> updateUserStatus(
             @Parameter(
                     description = "ID of the user whose status will be updated",
-                    example = "17"
+                    example = "01a1344b-f1f5-7c39-9550-53b97df5cc51"
             )
-            @PathVariable Long id,
+            //@PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody UserStatusRequest request) {
 
         log.info("====updateUserStatus====");
@@ -681,9 +693,10 @@ public class UserController {
     public ResponseEntity<Void> deleteById(
             @Parameter(
                     description = "ID of the user to delete",
-                    example = "17"
+                    example = "01a1344b-f1f5-7c39-9550-53b97df5cc51"
             )
-            @PathVariable Long id) {
+            //@PathVariable Long id) {
+            @PathVariable UUID id) {
 
         log.info("====deleteById====");
         userService.deleteById(id);
@@ -704,9 +717,10 @@ public class UserController {
     public ResponseEntity<UserResponse> updateUser(
             @Parameter(
                     description = "ID of the user to update",
-                    example = "17"
+                    example = "01a1344b-f1f5-7c39-9550-53b97df5cc51"
             )
-            @PathVariable Long id,
+            //@PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody UpdateUserRequest request) {
 
         log.info("====updateUser====");
