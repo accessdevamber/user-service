@@ -6,6 +6,7 @@ import ecommerce.user_service.entity.IdempotencyStatus;
 import ecommerce.user_service.exception.IdempotencyKeyReusedException;
 import ecommerce.user_service.exception.RequestAlreadyInProgressException;
 import ecommerce.user_service.repo.IdempotencyKeyRepository;
+import ecommerce.user_service.utility.UuidV7Generator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
@@ -103,7 +104,10 @@ public class IdempotencyService {
 
     public int tryClaim(String idempotencyKey, String requestHash) {
 
-        int inserted = repository.tryClaim(idempotencyKey, requestHash);
+        //This is different from repository.save() because native SQL does not trigger @PrePersist
+
+        String uuid = UuidV7Generator.generate().toString();
+        int inserted = repository.tryClaim(uuid, idempotencyKey, requestHash);
         log.info("Idempotency claim result. key={}, inserted={}", idempotencyKey, inserted);
         return inserted;
     }
